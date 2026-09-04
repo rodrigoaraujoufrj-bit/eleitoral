@@ -5,14 +5,19 @@ from theme import apply_branding
 st.set_page_config(page_title="Eleitoral", layout="wide")
 apply_branding()
 
-st.title("Eleitoral")
-st.caption("Análise geoespacial e dashboard interativo de dados eleitorais (dados abertos do TSE)")
-
-with st.container(border=True):
-    st.markdown(
-        "Projeto em fase inicial. Ainda estamos definindo o pleito, o ano e o "
-        "recorte geográfico de foco. Use o menu ao lado para acessar a página "
-        "**Funções e Deveres**, que explica o que cada cargo eletivo faz de fato. "
-        "Os próximos módulos, como mapas e indicadores, entram aqui conforme o "
-        "escopo for definido."
-    )
+pagina = st.navigation(
+    {
+        "Visão Geral": [st.Page("views/home.py", title="Home", url_path="home", default=True)],
+        "Pleito Municipal": [
+            st.Page("views/pleito_municipal.py", title="Vereador e Prefeito", url_path="pleito-municipal"),
+        ],
+        "Pleito Estadual e Federal": [
+            st.Page(
+                "views/pleito_estadual_federal.py",
+                title="Governador, Senador, Deputados e Presidente",
+                url_path="pleito-estadual-federal",
+            ),
+        ],
+    }
+)
+pagina.run()

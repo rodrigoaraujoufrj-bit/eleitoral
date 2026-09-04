@@ -1,32 +1,32 @@
 # Eleitoral
 
-Projeto de análise geoespacial e dashboard interativo de dados eleitorais, a partir dos dados abertos do TSE (Tribunal Superior Eleitoral).
+Projeto de análise geoespacial e dashboard interativo sobre a política eletiva do estado do Rio de Janeiro (RJ), a partir de dados abertos do TSE (Tribunal Superior Eleitoral) e do IBGE.
 
-## Status
+## Escopo
 
-Em fase de definição de escopo. Ainda estamos decidindo:
-
-- Qual pleito (federal, estadual, municipal) e qual ano
-- Qual recorte geográfico (nacional, estado, município específico)
-- Quais perguntas o projeto deve responder
+- **Recorte geográfico**: estado do Rio de Janeiro e seus 92 municípios (sem outros estados)
+- **Sem dados históricos**: o foco é o pleito atual/próximo de cada cargo, não série histórica de eleições passadas
+- **Dois pleitos**, porque no Brasil eles acontecem em anos diferentes:
+  - **Pleito Municipal**: vereador e prefeito
+  - **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente (eleição geral de 2026)
 
 ## Ideia geral
 
 - Explicar de forma clara o que cada cargo eletivo faz de fato, para direcionar melhor a cobrança política e o voto
-- Baixar e tratar dados abertos do TSE (resultados de votação, perfil do eleitorado, dados geográficos das zonas/seções eleitorais)
-- Análise geoespacial: mapas de concentração de votos, comparações regionais
-- Dashboard interativo com mapas e indicadores, navegável pelo navegador
+- Mostrar quantas vagas de cada cargo estão em disputa no RJ (por município, quando for o caso)
+- Análise geoespacial e dashboard interativo com mapas e indicadores, navegável pelo navegador
 
 ## Páginas do app
 
-- **Home**: apresentação do projeto e status atual
-- **Funções e Deveres**: o que cada cargo eletivo (presidente, governador, senador, deputado federal, deputado estadual, prefeito e vereador) realmente faz, com base na Constituição Federal, incluindo os equívocos mais comuns sobre cada um
+- **Home**: apresentação do projeto
+- **Pleito Municipal**: vereador e prefeito — quantas vagas no RJ e o que cada cargo faz
+- **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente — quantas vagas no RJ e o que cada cargo faz
 
 ## Stack
 
 - **Python** para tratamento de dados (pandas, geopandas)
 - **folium** / **plotly** para mapas e gráficos
-- **Streamlit** para o webapp/dashboard
+- **Streamlit** para o webapp/dashboard, com navegação em seções (`st.navigation`) separando os dois pleitos
 
 ## Identidade visual
 
@@ -37,16 +37,20 @@ Paleta roxo ardósia (base) e âmbar (destaque), com cinza neutro, escolhida ent
 ```
 eleitoral/
 ├── .streamlit/
-│   └── config.toml         # tema visual (cores, fonte, cantos)
+│   └── config.toml               # tema visual (cores, fonte, cantos)
 ├── app/
-│   ├── app.py              # página inicial (Home)
-│   ├── theme.py            # marca do app, aplicada em cada página
-│   ├── cargos_data.py      # conteúdo sobre funções e deveres de cada cargo
-│   └── pages/
-│       └── 1_Funções_e_Deveres.py
+│   ├── app.py                    # roteador (st.navigation entre os pleitos)
+│   ├── theme.py                  # marca do app, aplicada em cada página
+│   ├── components.py             # cards e resumo de vagas, reutilizados nas páginas
+│   ├── cargos_data.py            # funções e deveres de cada cargo, com o pleito a que pertence
+│   ├── rj_data.py                # quantidade de vagas de cada cargo no RJ
+│   └── views/
+│       ├── home.py
+│       ├── pleito_municipal.py
+│       └── pleito_estadual_federal.py
 ├── src/            # scripts de ingestão e tratamento de dados
 ├── data/
-│   ├── raw/        # dados brutos baixados do TSE (não versionados)
+│   ├── raw/        # dados brutos baixados do TSE/IBGE (não versionados)
 │   └── processed/  # dados já tratados (não versionados)
 ├── notebooks/      # exploração e prototipagem
 ├── requirements.txt
@@ -62,11 +66,20 @@ pip install -r requirements.txt
 streamlit run app/app.py
 ```
 
+## Dados pendentes
+
+Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, Wikipédia bloqueados), então os itens abaixo dependem de um arquivo baixado localmente e compartilhado com o projeto:
+
+- **Vereadores por município**: a Constituição (Art. 29, IV) define de 9 a 55 vereadores por município conforme a população, mas falta a população de cada um dos 92 municípios do RJ (censo 2022, IBGE) para calcular o total exato. Alternativa mais direta: o dataset "Vagas" do TSE (dadosabertos.tse.jus.br) já traz o número de vagas por município.
+- **Salário de cada cargo**: subsídio de presidente, governador, senador, deputado federal, deputado estadual, prefeito e vereador (esses dois últimos variam por município e têm teto definido por lei).
+
 ## Próximos passos
 
-- [x] Página de Funções e Deveres dos cargos eletivos
+- [x] Página de funções e deveres dos cargos eletivos
 - [x] Identidade visual (tema roxo ardósia + âmbar)
-- [ ] Definir pleito e ano de foco
-- [ ] Definir recorte geográfico
-- [ ] Baixar dados do repositório de dados abertos do TSE
+- [x] Definir recorte geográfico (RJ, 92 municípios)
+- [x] Definir pleitos e separar o app em duas seções (municipal / estadual e federal)
+- [x] Quantidade de vagas por cargo no RJ (exceto vereador, pendente de dados)
+- [ ] Carregar população dos municípios do RJ para calcular vereadores por município
+- [ ] Adicionar salário de cada cargo
 - [ ] Prototipar o primeiro mapa

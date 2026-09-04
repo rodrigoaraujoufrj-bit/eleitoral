@@ -143,3 +143,9 @@ CARGOS = [
         ],
     },
 ]
+
+# No Brasil, vereador e prefeito são eleitos num pleito (municipal) e os
+# demais cargos noutro (estadual e federal, no mesmo ano). O app segue essa
+# divisão, então cada cargo carrega a que pleito pertence.
+for _cargo in CARGOS:
+    _cargo["pleito"] = "Municipal" if _cargo["esfera"] == "Municipal" else "Estadual e Federal"

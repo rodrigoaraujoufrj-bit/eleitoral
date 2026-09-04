@@ -67,4 +67,6 @@ def carregar_locais_votacao() -> pd.DataFrame:
             eleitores=("eleitores_secao", "sum"),
         )
     )
-    return agrupado.drop(columns=["NM_MUNICIPIO", "NR_ZONA", "NR_LOCAL_VOTACAO"])
+    agrupado = agrupado.drop(columns=["NM_MUNICIPIO", "NR_ZONA", "NR_LOCAL_VOTACAO"])
+    agrupado.insert(0, "id_local", agrupado.index)
+    return agrupado

@@ -20,7 +20,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 ## Páginas do app
 
 - **Home**: apresentação do projeto
-- **Pleito Municipal**: vereador e prefeito — quantas vagas no RJ e o que cada cargo faz
+- **Pleito Municipal**: vereador e prefeito — quantas vagas no RJ, o que cada cargo faz, mapa por município e área de influência de cada local de votação
 - **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente — quantas vagas no RJ e o que cada cargo faz
 
 ## Stack
@@ -48,9 +48,12 @@ eleitoral/
 │   ├── municipios_rj.py          # população e vereadores dos 92 municípios do RJ
 │   ├── mapa_municipal.py         # mapa coroplético dos municípios do RJ
 │   ├── locais_votacao.py         # locais de votação do RJ (TSE), um ponto por local
+│   ├── setores_censitarios.py    # setores censitários do RJ (IBGE, Censo 2022)
+│   ├── areas_influencia.py       # área de influência de cada local de votação (setor + Voronoi)
 │   ├── diagrama_poderes.py       # diagrama Executivo x Legislativo e órgãos subordinados
 │   ├── geo/
-│   │   └── rj_municipios.geojson # contorno dos 92 municípios (fonte: GitHub, tbrugz/geodata-br)
+│   │   ├── rj_municipios.geojson          # contorno dos 92 municípios (fonte: GitHub, tbrugz/geodata-br)
+│   │   └── rj_setores_censitarios.parquet # setores censitários do RJ (fonte: GitHub, ipea/geobr_prep_data)
 │   └── views/
 │       ├── home.py
 │       ├── pleito_municipal.py
@@ -133,6 +136,38 @@ atrás de Akamai e bloqueia clientes de linha de comando por fingerprint TLS —
 `curl` e `Invoke-WebRequest` levam 403 mesmo com cabeçalhos de navegador. O
 download funcionou via `Start-BitsTransfer` (WinHTTP).
 
+## Área de influência de cada local de votação
+
+O TSE não publica um polígono oficial de abrangência por local de votação
+(a suspeita, investigada e não confirmada, é que só existe uma ferramenta
+de consulta ponto a ponto em cada TRE, sem tabela para download em lote).
+Como aproximação, `app/areas_influencia.py` faz o seguinte:
+
+1. Parte dos 5.038 pontos de `locais_votacao.py` e calcula, para cada
+   setor censitário do IBGE (a menor unidade geográfica oficial, 42.270
+   no RJ), qual é o local de votação mais próximo do seu centro — a mesma
+   lógica de um diagrama de Voronoi, mas decidida setor por setor, não com
+   geometria pura.
+2. Os setores atribuídos ao mesmo local são unidos (dissolve) numa única
+   área. A borda resultante acompanha os limites reais dos setores
+   censitários, não é uma reta artificial cruzando quadras ou ruas, como
+   seria num Voronoi comum.
+
+Nem todo local de votação forma uma área própria: quando vários locais
+ficam muito perto um do outro, pode não sobrar nenhum setor mais próximo
+de um deles do que dos vizinhos (no RJ, 4.883 dos 5.038 locais formam uma
+área). Essa é uma aproximação territorial, não o zoneamento eleitoral real
+(que também considera outros critérios, não só distância).
+
+Fonte dos setores censitários: pacote `geobr` (Ipea), que espelha os dados
+oficiais do IBGE em releases do GitHub
+(`github.com/ipea/geobr_prep_data`), já que o servidor do próprio IBGE
+(`geoftp.ibge.gov.br`) está bloqueado nesta sessão, assim como o TSE. Usada
+a versão "simplified" (simplificação topológica), no mesmo nível de
+detalhe já usado no contorno dos municípios. O arquivo nacional (~473 mil
+setores) foi filtrado para o RJ e salvo em `app/geo/rj_setores_censitarios.parquet`
+(GeoParquet, 8,5 MB — bem mais compacto que GeoJSON para 42 mil polígonos).
+
 ## Dados pendentes
 
 Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, Wikipédia bloqueados). A população dos municípios e os salários foram obtidos por busca (com fonte) ou colados manualmente a partir da Wikipédia, não baixados de um arquivo oficial.
@@ -174,6 +209,7 @@ Os locais de votação vieram assim: outra sessão do Claude Code, rodando local
 - [x] Diagrama Executivo x Legislativo, com definição de cada poder e órgãos subordinados no estado e no município
 - [x] Baixar os dados de eleitorado do TSE para o RJ (locais de votação, perfil por seção, eleitores com deficiência)
 - [x] Locais de votação no mapa (5.038 pontos, camada opcional)
+- [x] Área de influência de cada local de votação (setor censitário + local mais próximo), estado inteiro e zoom no Rio
 - [ ] Tratar `perfil_secao` e `perfil_deficiencia` e gerar agregados em `data/processed/`
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [ ] Mapas para o Pleito Estadual e Federal

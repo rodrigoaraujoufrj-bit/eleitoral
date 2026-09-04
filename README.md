@@ -20,8 +20,8 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 ## Páginas do app
 
 - **Home**: apresentação do projeto
-- **Pleito Municipal**: vereador e prefeito — quantas vagas no RJ, o que cada cargo faz, mapa por município e área de influência de cada zona eleitoral
-- **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente — quantas vagas no RJ e o que cada cargo faz
+- **Pleito Municipal**: vereador e prefeito, quantas vagas no RJ, o que cada cargo faz, mapa por município e área de influência de cada zona eleitoral
+- **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente, quantas vagas no RJ e o que cada cargo faz
 
 ## Stack
 
@@ -105,7 +105,7 @@ primeiro passo depois de clonar.
 | `perfil_secao` | `perfil_eleitor_secao_2026_RJ.csv` | 6.943.094 | 1,66 GB | 202 MB (3 partes) |
 | `perfil_deficiencia` | `perfil_eleitor_deficiencia_2026_RJ.csv` | 155.199 | 36,2 MB | 2,6 MB |
 
-Cada pasta traz o `leiame.pdf` original do respectivo conjunto — são documentos
+Cada pasta traz o `leiame.pdf` original do respectivo conjunto, são documentos
 **diferentes** entre si, um por conjunto.
 
 **Ao ler os CSVs**: são `ISO-8859-1` (Latin-1), sem BOM, separador `;`, campos de
@@ -118,7 +118,7 @@ pd.read_csv(caminho, sep=";", encoding="latin-1", decimal=",")
 
 A chave de junção entre os três conjuntos é `CD_MUNICIPIO` + `NR_ZONA` + `NR_SECAO`.
 Atenção: `perfil_deficiencia` é **microdado individual** (uma linha por eleitor,
-com `SQ_ELEITOR`), enquanto os outros dois são agregados — por isso este
+com `SQ_ELEITOR`), enquanto os outros dois são agregados, por isso este
 repositório é privado.
 
 `locais_votacao` tem cobertura de coordenada praticamente total: 5.038 dos
@@ -132,7 +132,7 @@ por local dava 2.919, fundindo locais físicos distintos). É a camada de
 pontos que aparece no mapa do Pleito Municipal, opcional via checkbox.
 
 Origem: <https://dadosabertos.tse.jus.br/>. O CDN do TSE (`cdn.tse.jus.br`) fica
-atrás de Akamai e bloqueia clientes de linha de comando por fingerprint TLS —
+atrás de Akamai e bloqueia clientes de linha de comando por fingerprint TLS,
 `curl` e `Invoke-WebRequest` levam 403 mesmo com cabeçalhos de navegador. O
 download funcionou via `Start-BitsTransfer` (WinHTTP).
 
@@ -176,7 +176,51 @@ oficiais do IBGE em releases do GitHub
 a versão "simplified" (simplificação topológica), no mesmo nível de
 detalhe já usado no contorno dos municípios. O arquivo nacional (~473 mil
 setores) foi filtrado para o RJ e salvo em `app/geo/rj_setores_censitarios.parquet`
-(GeoParquet, 8,5 MB — bem mais compacto que GeoJSON para 42 mil polígonos).
+(GeoParquet, 8,5 MB, bem mais compacto que GeoJSON para 42 mil polígonos).
+
+## Perfil do eleitorado por zona
+
+`src/tratar_perfil_secao.py` agrega `perfil_secao` (6,9 milhões de linhas,
+uma por combinação de seção e categoria) por zona eleitoral, somando
+`QT_ELEITORES` em quatro dimensões publicadas pelo TSE: gênero, faixa
+etária, grau de escolaridade e raça/cor. Roda em menos de 30 segundos (lê
+o CSV em pedaços de 500 mil linhas, já agregando cada pedaço antes de
+somar, para não estourar memória com um arquivo de 1,7 GB) e gera
+`data/processed/perfil_eleitorado_zona.parquet` (formato longo: município,
+zona, dimensão, categoria, eleitores), não versionado:
+
+```bash
+python src/tratar_perfil_secao.py
+```
+
+Validado: as 165 zonas batem exatamente com as de `locais_votacao.py`, os
+totais são consistentes entre as quatro dimensões (a soma por zona dá o
+mesmo valor em qualquer uma delas), e o total de eleitores do RJ (12,86
+milhões) é compatível com o esperado para o estado. Ainda não tem uma
+página no app, é o primeiro passo para cruzar densidade de eleitorado com
+perfil demográfico por zona.
+
+## Pontos de interesse (transporte, comércio) via OpenStreetMap
+
+Investigado como possível camada adicional (transporte público, shopping
+centers etc., úteis para cruzar com a área de influência de cada zona). O
+OSM tem as tags certas para isso: `highway=bus_stop` (ponto de ônibus),
+`railway=station` combinado com `station=subway` ou `station=light_rail`
+(metrô e VLT), `railway=station` sozinho (trem, SuperVia),
+`amenity=bus_station` (terminal), `shop=mall` (shopping),
+`amenity=place_of_worship` (igrejas, relevante para o perfil eleitoral no
+Brasil).
+
+Mas, assim como TSE e IBGE, nenhuma fonte testada de dados do OSM é
+acessível nesta sessão: a Overpass API (`overpass-api.de`,
+`overpass.kumi.systems`), o Geofabrik e o extrato regional do
+OpenStreetMap France (`download.openstreetmap.fr`) devolveram bloqueio de
+rede, assim como os serviços ArcGIS da própria prefeitura do Rio
+(`pgeo3.rio.rj.gov.br`, que tem uma camada de transporte público). Ao
+contrário dos setores censitários, ainda não foi encontrado um espelho
+desses dados no GitHub. Para usar essa camada, vai precisar da mesma ponte
+usada para os dados do TSE: alguém com acesso de rede baixa o extrato
+(Overpass Turbo ou Geofabrik, recorte RJ) e sobe pro repositório.
 
 ## Dados pendentes
 
@@ -189,7 +233,7 @@ O contorno geográfico dos municípios (para o mapa) veio de um repositório pú
 
 **Correção importante em `app/geo/rj_municipios.geojson`**: 6 municípios com litoral complexo
 (Rio de Janeiro, Macaé, Paraty, Angra dos Reis, Mangaratiba, Itaguaí) tinham a
-geometria corrompida na fonte original — cada ilha virou um "anel" a mais dentro
+geometria corrompida na fonte original: cada ilha virou um "anel" a mais dentro
 de um único `Polygon`, em vez de cada uma virar seu próprio polígono num
 `MultiPolygon`. O GeoJSON tratava o primeiro anel como área externa e todo o
 resto como buraco a subtrair, dando geometria inválida (área negativa,

@@ -28,12 +28,19 @@ Em fase de definição de escopo. Ainda estamos decidindo:
 - **folium** / **plotly** para mapas e gráficos
 - **Streamlit** para o webapp/dashboard
 
+## Identidade visual
+
+Paleta roxo ardósia (base) e âmbar (destaque), com cinza neutro, escolhida entre 4 direções para evitar qualquer associação partidária (nada de vermelho, azul saturado ou verde-amarelo). Tom moderno e acessível, fonte Manrope. Configurada em `.streamlit/config.toml` (tema principal e tema da barra lateral) e aplicada em todas as páginas via `app/theme.py`.
+
 ## Estrutura
 
 ```
 eleitoral/
+├── .streamlit/
+│   └── config.toml         # tema visual (cores, fonte, cantos)
 ├── app/
 │   ├── app.py              # página inicial (Home)
+│   ├── theme.py            # marca do app, aplicada em cada página
 │   ├── cargos_data.py      # conteúdo sobre funções e deveres de cada cargo
 │   └── pages/
 │       └── 1_Funções_e_Deveres.py
@@ -58,6 +65,7 @@ streamlit run app/app.py
 ## Próximos passos
 
 - [x] Página de Funções e Deveres dos cargos eletivos
+- [x] Identidade visual (tema roxo ardósia + âmbar)
 - [ ] Definir pleito e ano de foco
 - [ ] Definir recorte geográfico
 - [ ] Baixar dados do repositório de dados abertos do TSE

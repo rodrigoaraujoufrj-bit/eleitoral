@@ -5,17 +5,20 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from cargos_data import CARGOS
+from theme import apply_branding
 
 st.set_page_config(page_title="Funções e Deveres", layout="wide")
+apply_branding()
 
 st.title("Funções e Deveres dos Cargos Eletivos")
-st.markdown(
-    "Muita cobrança política é feita ao cargo errado. Segurança pública, "
-    "por exemplo, não é atribuição do prefeito, é do governador. Esta "
-    "página resume o que cada cargo realmente faz, com base na "
-    "Constituição Federal, para ajudar a direcionar a cobrança e o voto "
-    "de forma mais informada."
-)
+with st.container(border=True):
+    st.markdown(
+        "Muita cobrança política é feita ao cargo errado. **Segurança pública, "
+        "por exemplo, não é atribuição do prefeito, é do governador.** Esta "
+        "página resume o que cada cargo realmente faz, com base na "
+        "Constituição Federal, para ajudar a direcionar a cobrança e o voto "
+        "de forma mais informada."
+    )
 
 esferas = ["Federal", "Estadual", "Municipal"]
 abas = st.tabs(esferas)

@@ -1,0 +1,19 @@
+[theme]
+base = "light"
+primaryColor = "#C9922E"
+backgroundColor = "#FAF8FB"
+secondaryBackgroundColor = "#F1ECF6"
+textColor = "#241B33"
+linkColor = "#C9922E"
+borderColor = "#E9E3EF"
+baseRadius = "1rem"
+font = "Manrope:https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+headingFontWeights = [800, 700, 700, 600, 600, 600]
+
+[theme.sidebar]
+backgroundColor = "#2C2140"
+secondaryBackgroundColor = "#3A2C52"
+textColor = "#F1EAF7"
+primaryColor = "#C9922E"
+linkColor = "#C9922E"
+borderColor = "#3F3057"

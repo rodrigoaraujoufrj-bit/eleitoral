@@ -3,6 +3,7 @@ import streamlit as st
 
 from cargos_data import CARGOS
 from components import formatar_reais, render_cargo_card, render_salarios_resumo, render_vagas_resumo
+from mapa_municipal import montar_mapa
 from municipios_rj import MUNICIPIOS_RJ, SUBSIDIO_DEPUTADO_ESTADUAL_RJ
 from rj_data import CARGOS_RJ
 
@@ -34,6 +35,16 @@ tabela = pd.DataFrame(MUNICIPIOS_RJ).rename(
     }
 )
 st.dataframe(tabela.sort_values("População (2022)", ascending=False), hide_index=True, use_container_width=True)
+
+st.subheader("Mapa")
+opcoes_mapa = {
+    "População (2022)": "populacao_2022",
+    "Vereadores": "vereadores",
+    "Teto do subsídio de vereador (R$)": "teto_vereador",
+}
+escolha = st.selectbox("O que colorir no mapa", options=list(opcoes_mapa.keys()))
+fig = montar_mapa(MUNICIPIOS_RJ, opcoes_mapa[escolha], escolha)
+st.pyplot(fig, use_container_width=True)
 
 st.subheader("O que cada cargo faz")
 for cargo in cargos_municipais:

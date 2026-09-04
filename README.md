@@ -26,7 +26,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 ## Stack
 
 - **Python** para tratamento de dados (pandas, geopandas)
-- **folium** / **plotly** para mapas e gráficos
+- **geopandas** / **matplotlib** para os mapas coropléticos (estáticos, sem depender de internet em tempo de execução) e **plotly** para outros gráficos
 - **Streamlit** para o webapp/dashboard, com navegação em seções (`st.navigation`) separando os dois pleitos
 
 ## Identidade visual
@@ -46,6 +46,9 @@ eleitoral/
 │   ├── cargos_data.py            # funções e deveres de cada cargo, com o pleito a que pertence
 │   ├── rj_data.py                # quantidade de vagas de cada cargo no RJ
 │   ├── municipios_rj.py          # população e vereadores dos 92 municípios do RJ
+│   ├── mapa_municipal.py         # mapa coroplético dos municípios do RJ
+│   ├── geo/
+│   │   └── rj_municipios.geojson # contorno dos 92 municípios (fonte: GitHub, tbrugz/geodata-br)
 │   └── views/
 │       ├── home.py
 │       ├── pleito_municipal.py
@@ -75,6 +78,10 @@ Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, W
 - **Salário de prefeito por município**: não existe fórmula constitucional (é fixado por lei de cada Câmara Municipal). Hoje o app mostra só o exemplo da capital.
 - **Salário efetivo de vereador por município**: o app mostra o teto legal (máximo permitido), não o valor que cada Câmara efetivamente paga, que pode ser menor.
 
+O contorno geográfico dos municípios (para o mapa) veio de um repositório público no GitHub (`raw.githubusercontent.com`, não bloqueado aqui), então esse item não teve o mesmo problema.
+
+Sobre o mapa em si: a primeira versão usava Leaflet (via `folium`), mas a biblioteca e as camadas de mapa (tiles) vêm de CDNs externos (jsdelivr, CartoDB, OpenStreetMap), todos bloqueados nesta sessão. Trocado por um mapa estático com `geopandas`/`matplotlib`, que não depende de nada externo em tempo de execução, nem aqui nem para quem for rodar o app.
+
 ## Próximos passos
 
 - [x] Página de funções e deveres dos cargos eletivos
@@ -85,5 +92,7 @@ Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, W
 - [x] Vereadores por município (1.376 no total), com base na população do Censo 2022
 - [x] Salário de presidente, governador, senador, deputado federal e deputado estadual
 - [x] Teto legal de subsídio de vereador por município
+- [x] Primeiro mapa coroplético (população, vereadores ou teto de subsídio por município)
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
-- [ ] Prototipar o primeiro mapa
+- [ ] Mapas para o Pleito Estadual e Federal
+- [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

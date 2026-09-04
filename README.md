@@ -47,6 +47,7 @@ eleitoral/
 │   ├── rj_data.py                # quantidade de vagas de cada cargo no RJ
 │   ├── municipios_rj.py          # população e vereadores dos 92 municípios do RJ
 │   ├── mapa_municipal.py         # mapa coroplético dos municípios do RJ
+│   ├── locais_votacao.py         # locais de votação do RJ (TSE), um ponto por local
 │   ├── diagrama_poderes.py       # diagrama Executivo x Legislativo e órgãos subordinados
 │   ├── geo/
 │   │   └── rj_municipios.geojson # contorno dos 92 municípios (fonte: GitHub, tbrugz/geodata-br)
@@ -117,6 +118,12 @@ Atenção: `perfil_deficiencia` é **microdado individual** (uma linha por eleit
 com `SQ_ELEITOR`), enquanto os outros dois são agregados — por isso este
 repositório é privado.
 
+`locais_votacao` tem cobertura de coordenada praticamente total: 2.918 dos
+2.919 locais de votação únicos do RJ têm latitude/longitude válida (a mesma
+escola pode reunir várias seções, por isso `app/locais_votacao.py` agrupa por
+local antes de plotar). É a camada de pontos que aparece no mapa do Pleito
+Municipal, opcional via checkbox.
+
 Origem: <https://dadosabertos.tse.jus.br/>. O CDN do TSE (`cdn.tse.jus.br`) fica
 atrás de Akamai e bloqueia clientes de linha de comando por fingerprint TLS —
 `curl` e `Invoke-WebRequest` levam 403 mesmo com cabeçalhos de navegador. O
@@ -133,6 +140,8 @@ O contorno geográfico dos municípios (para o mapa) veio de um repositório pú
 
 Sobre o mapa em si: a primeira versão usava Leaflet (via `folium`), mas a biblioteca e as camadas de mapa (tiles) vêm de CDNs externos (jsdelivr, CartoDB, OpenStreetMap), todos bloqueados nesta sessão. Trocado por um mapa estático com `geopandas`/`matplotlib`, que não depende de nada externo em tempo de execução, nem aqui nem para quem for rodar o app.
 
+Os locais de votação vieram assim: outra sessão do Claude Code, rodando localmente (sem essa restrição de rede), baixou os três conjuntos do TSE e subiu pro GitHub comprimidos, seguindo o padrão de "usar o GitHub como ponte" descrito acima.
+
 ## Próximos passos
 
 - [x] Página de funções e deveres dos cargos eletivos
@@ -146,7 +155,8 @@ Sobre o mapa em si: a primeira versão usava Leaflet (via `folium`), mas a bibli
 - [x] Primeiro mapa coroplético (população, vereadores ou teto de subsídio por município)
 - [x] Diagrama Executivo x Legislativo, com definição de cada poder e órgãos subordinados no estado e no município
 - [x] Baixar os dados de eleitorado do TSE para o RJ (locais de votação, perfil por seção, eleitores com deficiência)
-- [ ] Tratar os brutos do TSE e gerar agregados em `data/processed/`
+- [x] Locais de votação no mapa (2.918 pontos, camada opcional)
+- [ ] Tratar `perfil_secao` e `perfil_deficiencia` e gerar agregados em `data/processed/`
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [ ] Mapas para o Pleito Estadual e Federal
 - [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

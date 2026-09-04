@@ -4,6 +4,7 @@ import streamlit as st
 from cargos_data import CARGOS
 from components import formatar_reais, render_cargo_card, render_salarios_resumo, render_vagas_resumo
 from diagrama_poderes import montar_diagrama
+from locais_votacao import carregar_locais_votacao, locais_votacao_disponivel
 from mapa_municipal import montar_mapa
 from municipios_rj import MUNICIPIOS_RJ, SUBSIDIO_DEPUTADO_ESTADUAL_RJ
 from rj_data import CARGOS_RJ
@@ -44,7 +45,18 @@ opcoes_mapa = {
     "Teto do subsídio de vereador (R$)": "teto_vereador",
 }
 escolha = st.selectbox("O que colorir no mapa", options=list(opcoes_mapa.keys()))
-fig = montar_mapa(MUNICIPIOS_RJ, opcoes_mapa[escolha], escolha)
+
+locais = None
+if locais_votacao_disponivel():
+    if st.checkbox("Mostrar locais de votação (eleição de 04/10/2026)"):
+        locais = carregar_locais_votacao()
+        st.caption(f"{len(locais):,} locais de votação no RJ, cada um pode reunir várias seções.".replace(",", "."))
+else:
+    st.caption(
+        "Locais de votação: rode `python src/restaurar_dados.py` para restaurar esse conjunto de dados do TSE."
+    )
+
+fig = montar_mapa(MUNICIPIOS_RJ, opcoes_mapa[escolha], escolha, locais_votacao=locais)
 st.pyplot(fig, use_container_width=True)
 
 st.subheader("Como o poder é organizado no município")

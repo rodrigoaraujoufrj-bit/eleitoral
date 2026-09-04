@@ -46,9 +46,9 @@ def _seta(ax, x, y_topo, y_base, cor):
 
 def montar_diagrama(cargo_executivo: dict, cargo_legislativo: dict):
     """Diagrama Executivo x Legislativo: definição, cargo e órgãos subordinados."""
-    fig, ax = plt.subplots(figsize=(10, 7))
+    fig, ax = plt.subplots(figsize=(10, 7.3))
     ax.set_xlim(0, 10)
-    ax.set_ylim(0, 10.5)
+    ax.set_ylim(0, 10.9)
     ax.set_axis_off()
 
     colunas = [
@@ -57,30 +57,41 @@ def montar_diagrama(cargo_executivo: dict, cargo_legislativo: dict):
     ]
     largura = 4.5
 
+    # Altura de cada bloco, de cima para baixo. A caixa de definição do
+    # poder é a mais alta porque tem o texto mais longo (checada à mão
+    # para não deixar a última linha colada na borda).
+    altura_definicao = 3.3
+    altura_cargo = 1.2
+    altura_orgaos = 4.6
+    y_definicao = 7.6
+    y_cargo = 5.7
+    y_orgaos = 0.3
+
     for x, poder, cor, cargo in colunas:
         definicao = textwrap.fill(DEFINICOES_PODER[poder], width=42)
         _caixa(
-            ax, x, 7.6, largura, 2.9, cor, COR_TEXTO_CLARO,
+            ax, x, y_definicao, largura, altura_definicao, cor, COR_TEXTO_CLARO,
             f"PODER {poder.upper()}", definicao, tamanho_titulo=14, tamanho_corpo=9.5,
         )
-        _seta(ax, x + largura / 2, 7.55, 6.9, cor)
+        _seta(ax, x + largura / 2, y_definicao - 0.05, y_cargo + altura_cargo + 0.2, cor)
 
         _caixa(
-            ax, x, 5.7, largura, 1.2, cor, COR_TEXTO_CLARO,
+            ax, x, y_cargo, largura, altura_cargo, cor, COR_TEXTO_CLARO,
             cargo["cargo"], None, tamanho_titulo=13,
         )
-        _seta(ax, x + largura / 2, 5.65, 5.0, cor)
+        _seta(ax, x + largura / 2, y_cargo - 0.05, y_orgaos + altura_orgaos + 0.2, cor)
 
         orgaos = "\n".join(f"•  {item}" for item in cargo["orgaos_subordinados"])
         orgaos_quebrado = "\n".join(
             textwrap.fill(linha, width=48, subsequent_indent="    ") for linha in orgaos.split("\n")
         )
+        titulo_y = y_orgaos + altura_orgaos - 0.35
         _caixa(
-            ax, x, 0.3, largura, 4.6, COR_CAIXA_ORGAOS, COR_TEXTO_ESCURO,
+            ax, x, y_orgaos, largura, altura_orgaos, COR_CAIXA_ORGAOS, COR_TEXTO_ESCURO,
             "Órgãos subordinados", None, tamanho_titulo=12,
         )
         ax.text(
-            x + 0.3, 4.1, orgaos_quebrado,
+            x + 0.3, titulo_y - 0.45, orgaos_quebrado,
             ha="left", va="top", fontsize=9.5, color=COR_TEXTO_ESCURO, linespacing=1.9,
         )
 

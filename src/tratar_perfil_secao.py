@@ -1,11 +1,13 @@
 """Agrega o perfil do eleitorado (TSE, perfil_secao) por zona eleitoral do RJ.
 
 Lê data/raw/perfil_secao/perfil_eleitor_secao_2026_RJ.csv em pedaços (6,9
-milhões de linhas, 1,7 GB) e soma QT_ELEITORES por zona e categoria, num
-formato longo (município, zona, dimensão, categoria, eleitores), para as
-quatro dimensões publicadas pelo TSE: gênero, faixa etária, grau de
-escolaridade e raça/cor. Estado civil, identidade de gênero, quilombola e
-intérprete de libras existem no CSV mas não entram aqui por enquanto.
+milhões de linhas, 1,7 GB) e soma QT_ELEITORES por zona, mantendo a
+combinação completa de gênero, faixa etária, grau de escolaridade e
+raça/cor (não cada dimensão separada): é isso que permite depois filtrar
+por mais de uma dimensão ao mesmo tempo (por exemplo "mulheres jovens com
+ensino médio incompleto") sem perder a relação entre elas. Estado civil,
+identidade de gênero, quilombola e intérprete de libras existem no CSV mas
+não entram aqui por enquanto.
 
 Gera data/processed/perfil_eleitorado_zona.parquet. Não versionado (como o
 resto de data/processed/), rode antes de usar algo que dependa dele:
@@ -22,39 +24,34 @@ CSV_PATH = (
 )
 OUT_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "perfil_eleitorado_zona.parquet"
 
-DIMENSOES = {
-    "genero": "DS_GENERO",
-    "faixa_etaria": "DS_FAIXA_ETARIA",
-    "escolaridade": "DS_GRAU_ESCOLARIDADE",
-    "raca_cor": "DS_RACA_COR",
+COLUNAS = {
+    "CD_MUNICIPIO": "cd_municipio",
+    "NM_MUNICIPIO": "municipio",
+    "NR_ZONA": "zona",
+    "DS_GENERO": "genero",
+    "DS_FAIXA_ETARIA": "faixa_etaria",
+    "DS_GRAU_ESCOLARIDADE": "escolaridade",
+    "DS_RACA_COR": "raca_cor",
 }
 
-COLUNAS_USO = ["CD_MUNICIPIO", "NM_MUNICIPIO", "NR_ZONA", "QT_ELEITORES", *DIMENSOES.values()]
-
-CHAVE = ["CD_MUNICIPIO", "NM_MUNICIPIO", "NR_ZONA", "dimensao", "categoria"]
+CHAVE = list(COLUNAS.values())
 
 
 def processar(tamanho_pedaco: int = 500_000) -> pd.DataFrame:
-    """Soma QT_ELEITORES por zona/dimensão/categoria, lendo o CSV em pedaços.
+    """Soma QT_ELEITORES por zona e combinação de categorias, lendo o CSV em pedaços.
 
-    Cada pedaço já é agregado (de ~500 mil linhas para algumas centenas)
-    antes de acumular, então a soma final cabe em memória mesmo num CSV
-    de 1,7 GB.
+    Cada pedaço já é agregado (de ~500 mil linhas para algumas dezenas de
+    milhares) antes de acumular, então a soma final cabe em memória mesmo
+    num CSV de 1,7 GB.
     """
     partes = []
     leitor = pd.read_csv(
-        CSV_PATH, sep=";", encoding="latin-1", usecols=COLUNAS_USO, dtype=str, chunksize=tamanho_pedaco
+        CSV_PATH, sep=";", encoding="latin-1", usecols=["QT_ELEITORES", *COLUNAS], dtype=str, chunksize=tamanho_pedaco
     )
     for pedaco in leitor:
+        pedaco = pedaco.rename(columns=COLUNAS)
         pedaco["QT_ELEITORES"] = pd.to_numeric(pedaco["QT_ELEITORES"], errors="coerce").fillna(0)
-        for dimensao, coluna in DIMENSOES.items():
-            agrupado = (
-                pedaco.groupby(["CD_MUNICIPIO", "NM_MUNICIPIO", "NR_ZONA", coluna], as_index=False)["QT_ELEITORES"]
-                .sum()
-                .rename(columns={coluna: "categoria"})
-            )
-            agrupado.insert(3, "dimensao", dimensao)
-            partes.append(agrupado)
+        partes.append(pedaco.groupby(CHAVE, as_index=False)["QT_ELEITORES"].sum())
 
     bruto = pd.concat(partes, ignore_index=True)
     return bruto.groupby(CHAVE, as_index=False)["QT_ELEITORES"].sum().rename(columns={"QT_ELEITORES": "eleitores"})

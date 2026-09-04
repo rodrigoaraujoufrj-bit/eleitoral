@@ -18,6 +18,9 @@ pagina = st.navigation(
                 url_path="pleito-estadual-federal",
             ),
         ],
+        "Análise do Eleitorado": [
+            st.Page("views/perfil_eleitorado.py", title="Perfil por Zona", url_path="perfil-eleitorado"),
+        ],
     }
 )
 pagina.run()

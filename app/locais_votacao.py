@@ -5,6 +5,13 @@ data/raw/locais_votacao/leiame.pdf). O CSV bruto tem uma linha por seção
 eleitoral; aqui ele é agregado para uma linha por local físico (uma escola
 pode ter várias seções).
 
+A chave do agrupamento é município + zona + NR_LOCAL_VOTACAO, não só
+NR_LOCAL_VOTACAO: esse número se repete em zonas diferentes do mesmo
+município, então agrupar sem a zona funde locais físicos distintos (dava
+2.919 "locais únicos" em vez dos 5.040 corretos). O total oficial do TSE
+para o RJ é 5.183 (autoatendimento eleitoral, tse.jus.br); a diferença de
+~2,8% é provavelmente só a data de geração deste extrato.
+
 Requer que data/raw/locais_votacao/eleitorado_local_votacao_2026_RJ.csv já
 tenha sido restaurado (python src/restaurar_dados.py).
 """
@@ -47,7 +54,7 @@ def carregar_locais_votacao() -> pd.DataFrame:
     bruto["eleitores_secao"] = pd.to_numeric(bruto["QT_ELEITOR_SECAO"], errors="coerce").fillna(0)
 
     agrupado = (
-        bruto.groupby(["NM_MUNICIPIO", "NR_LOCAL_VOTACAO"], as_index=False)
+        bruto.groupby(["NM_MUNICIPIO", "NR_ZONA", "NR_LOCAL_VOTACAO"], as_index=False)
         .agg(
             municipio=("NM_MUNICIPIO", "first"),
             zona=("NR_ZONA", "first"),
@@ -60,4 +67,4 @@ def carregar_locais_votacao() -> pd.DataFrame:
             eleitores=("eleitores_secao", "sum"),
         )
     )
-    return agrupado.drop(columns=["NM_MUNICIPIO", "NR_LOCAL_VOTACAO"])
+    return agrupado.drop(columns=["NM_MUNICIPIO", "NR_ZONA", "NR_LOCAL_VOTACAO"])

@@ -118,11 +118,15 @@ Atenção: `perfil_deficiencia` é **microdado individual** (uma linha por eleit
 com `SQ_ELEITOR`), enquanto os outros dois são agregados — por isso este
 repositório é privado.
 
-`locais_votacao` tem cobertura de coordenada praticamente total: 2.918 dos
-2.919 locais de votação únicos do RJ têm latitude/longitude válida (a mesma
-escola pode reunir várias seções, por isso `app/locais_votacao.py` agrupa por
-local antes de plotar). É a camada de pontos que aparece no mapa do Pleito
-Municipal, opcional via checkbox.
+`locais_votacao` tem cobertura de coordenada praticamente total: 5.038 dos
+5.040 locais de votação únicos do RJ têm latitude/longitude válida (bate com
+o total oficial do TSE, 5.183, a diferença de ~2,8% é provavelmente a data
+de geração deste extrato). A mesma escola pode reunir várias seções, por
+isso `app/locais_votacao.py` agrupa por local antes de plotar. Atenção:
+o agrupamento tem que ser por **município + zona + NR_LOCAL_VOTACAO**, esse
+número sozinho se repete em zonas diferentes do mesmo município (agrupar só
+por local dava 2.919, fundindo locais físicos distintos). É a camada de
+pontos que aparece no mapa do Pleito Municipal, opcional via checkbox.
 
 Origem: <https://dadosabertos.tse.jus.br/>. O CDN do TSE (`cdn.tse.jus.br`) fica
 atrás de Akamai e bloqueia clientes de linha de comando por fingerprint TLS —
@@ -155,7 +159,7 @@ Os locais de votação vieram assim: outra sessão do Claude Code, rodando local
 - [x] Primeiro mapa coroplético (população, vereadores ou teto de subsídio por município)
 - [x] Diagrama Executivo x Legislativo, com definição de cada poder e órgãos subordinados no estado e no município
 - [x] Baixar os dados de eleitorado do TSE para o RJ (locais de votação, perfil por seção, eleitores com deficiência)
-- [x] Locais de votação no mapa (2.918 pontos, camada opcional)
+- [x] Locais de votação no mapa (5.038 pontos, camada opcional)
 - [ ] Tratar `perfil_secao` e `perfil_deficiencia` e gerar agregados em `data/processed/`
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [ ] Mapas para o Pleito Estadual e Federal

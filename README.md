@@ -20,7 +20,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 ## Páginas do app
 
 - **Home**: apresentação do projeto
-- **Pleito Municipal**: vereador e prefeito — quantas vagas no RJ, o que cada cargo faz, mapa por município e área de influência de cada local de votação
+- **Pleito Municipal**: vereador e prefeito — quantas vagas no RJ, o que cada cargo faz, mapa por município e área de influência de cada zona eleitoral
 - **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente — quantas vagas no RJ e o que cada cargo faz
 
 ## Stack
@@ -49,7 +49,7 @@ eleitoral/
 │   ├── mapa_municipal.py         # mapa coroplético dos municípios do RJ
 │   ├── locais_votacao.py         # locais de votação do RJ (TSE), um ponto por local
 │   ├── setores_censitarios.py    # setores censitários do RJ (IBGE, Censo 2022)
-│   ├── areas_influencia.py       # área de influência de cada local de votação (setor + Voronoi)
+│   ├── areas_influencia.py       # área de influência de cada zona eleitoral (setor + Voronoi)
 │   ├── diagrama_poderes.py       # diagrama Executivo x Legislativo e órgãos subordinados
 │   ├── geo/
 │   │   ├── rj_municipios.geojson          # contorno dos 92 municípios (fonte: GitHub, tbrugz/geodata-br)
@@ -136,28 +136,38 @@ atrás de Akamai e bloqueia clientes de linha de comando por fingerprint TLS —
 `curl` e `Invoke-WebRequest` levam 403 mesmo com cabeçalhos de navegador. O
 download funcionou via `Start-BitsTransfer` (WinHTTP).
 
-## Área de influência de cada local de votação
+## Área de influência de cada zona eleitoral
 
-O TSE não publica um polígono oficial de abrangência por local de votação
+O TSE não publica um polígono oficial de abrangência por zona eleitoral
 (a suspeita, investigada e não confirmada, é que só existe uma ferramenta
 de consulta ponto a ponto em cada TRE, sem tabela para download em lote).
 Como aproximação, `app/areas_influencia.py` faz o seguinte:
 
 1. Parte dos 5.038 pontos de `locais_votacao.py` e calcula, para cada
    setor censitário do IBGE (a menor unidade geográfica oficial, 42.270
-   no RJ), qual é o local de votação mais próximo do seu centro — a mesma
+   no RJ), qual é o local de votação mais próximo do seu centro, a mesma
    lógica de um diagrama de Voronoi, mas decidida setor por setor, não com
    geometria pura.
-2. Os setores atribuídos ao mesmo local são unidos (dissolve) numa única
-   área. A borda resultante acompanha os limites reais dos setores
-   censitários, não é uma reta artificial cruzando quadras ou ruas, como
-   seria num Voronoi comum.
+2. A hierarquia eleitoral, da maior unidade para a menor, é zona, depois
+   local de votação, depois seção: uma zona reúne vários locais, e cada
+   local reúne várias seções. Atribuir cada setor direto ao local mais
+   próximo (5.038 no RJ) gerava áreas pequenas e picotadas nas regiões
+   mais densas. Por isso os setores são dissolvidos por zona (165 no RJ):
+   bem menos fragmentado, ainda seguindo os limites reais dos setores, não
+   retas artificiais.
 
-Nem todo local de votação forma uma área própria: quando vários locais
-ficam muito perto um do outro, pode não sobrar nenhum setor mais próximo
-de um deles do que dos vizinhos (no RJ, 4.883 dos 5.038 locais formam uma
-área). Essa é uma aproximação territorial, não o zoneamento eleitoral real
-(que também considera outros critérios, não só distância).
+Mesmo por zona, dentro do município do Rio (49 zonas) as áreas ficam
+espalhadas e intercaladas pelo território, não formam blocos únicos e
+contíguos como um bairro: é assim mesmo que a divisão em zonas eleitorais
+foi desenhada lá, não é erro de cálculo. Por isso o mapa usa preenchimento
+colorido por zona, não só contorno (que vira uma malha ilegível quando há
+muitas áreas pequenas lado a lado), com uma paleta categórica só dentro da
+família roxo/magenta/âmbar do app (nada de vermelho, verde ou azul
+saturado, pelo mesmo motivo da identidade visual: nenhuma associação
+partidária).
+
+Essa é uma aproximação territorial, não o zoneamento eleitoral real (que
+também considera outros critérios, não só distância).
 
 Fonte dos setores censitários: pacote `geobr` (Ipea), que espelha os dados
 oficiais do IBGE em releases do GitHub
@@ -209,7 +219,7 @@ Os locais de votação vieram assim: outra sessão do Claude Code, rodando local
 - [x] Diagrama Executivo x Legislativo, com definição de cada poder e órgãos subordinados no estado e no município
 - [x] Baixar os dados de eleitorado do TSE para o RJ (locais de votação, perfil por seção, eleitores com deficiência)
 - [x] Locais de votação no mapa (5.038 pontos, camada opcional)
-- [x] Área de influência de cada local de votação (setor censitário + local mais próximo), estado inteiro e zoom no Rio
+- [x] Área de influência de cada zona eleitoral (setor censitário + local mais próximo, dissolvido por zona), estado inteiro e zoom no Rio
 - [ ] Tratar `perfil_secao` e `perfil_deficiencia` e gerar agregados em `data/processed/`
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [ ] Mapas para o Pleito Estadual e Federal

@@ -68,13 +68,13 @@ else:
 fig = montar_mapa(MUNICIPIOS_RJ, opcoes_mapa[escolha], escolha, locais_votacao=locais)
 st.pyplot(fig, use_container_width=True)
 
-st.subheader("Área de influência de cada local de votação")
+st.subheader("Área de influência de cada zona eleitoral")
 st.caption(
-    "O TSE não publica um polígono oficial de abrangência por local de votação. Como "
+    "O TSE não publica um polígono oficial de abrangência por zona eleitoral. Como "
     "aproximação, cada setor censitário do IBGE (Censo 2022, a menor unidade geográfica "
     "oficial) foi atribuído ao local de votação mais próximo do seu centro, e os setores "
-    "de cada local foram unidos numa única área. A borda de cada área acompanha os "
-    "limites reais dos setores, não é uma reta artificial."
+    "de cada zona (a unidade que reúne vários locais) foram unidos numa única área. A "
+    "borda de cada área acompanha os limites reais dos setores, não é uma reta artificial."
 )
 if locais_votacao_disponivel():
     recorte = st.radio(

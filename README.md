@@ -54,9 +54,13 @@ eleitoral/
 │       ├── home.py
 │       ├── pleito_municipal.py
 │       └── pleito_estadual_federal.py
-├── src/            # scripts de ingestão e tratamento de dados
+├── src/
+│   └── restaurar_dados.py        # remonta e descomprime os brutos do TSE
 ├── data/
-│   ├── raw/        # dados brutos baixados do TSE/IBGE (não versionados)
+│   ├── raw/        # brutos do TSE, versionados comprimidos (ver abaixo)
+│   │   ├── locais_votacao/       # eleitorado por local de votação (RJ)
+│   │   ├── perfil_secao/         # perfil do eleitorado por seção (RJ)
+│   │   └── perfil_deficiencia/   # eleitores com deficiência (RJ)
 │   └── processed/  # dados já tratados (não versionados)
 ├── notebooks/      # exploração e prototipagem
 ├── requirements.txt
@@ -71,6 +75,52 @@ source .venv/bin/activate
 pip install -r requirements.txt
 streamlit run app/app.py
 ```
+
+## Dados brutos do TSE
+
+Três conjuntos de dados abertos do TSE, todos com recorte **RJ** e referentes à
+eleição de **04/10/2026**, estão versionados em `data/raw/`. Como os CSVs
+originais somam ~1,8 GB e o GitHub rejeita arquivos acima de 100 MiB, eles
+entram no repositório **comprimidos com gzip**; o maior deles é ainda dividido
+em partes de 90 MiB.
+
+Para gerar os `.csv` a partir do que está versionado:
+
+```bash
+python src/restaurar_dados.py              # restaura o que estiver faltando
+python src/restaurar_dados.py --verificar  # só confere os sha256
+```
+
+O script remonta as partes, descomprime e valida o SHA-256 de cada arquivo. Os
+`.csv` resultantes ficam fora do versionamento (`.gitignore`), então rodá-lo é o
+primeiro passo depois de clonar.
+
+| Conjunto | Arquivo | Linhas | CSV | No repo |
+|---|---|---:|---:|---:|
+| `locais_votacao` | `eleitorado_local_votacao_2026_RJ.csv` | 38.739 | 15,2 MB | 2,9 MB |
+| `perfil_secao` | `perfil_eleitor_secao_2026_RJ.csv` | 6.943.094 | 1,66 GB | 202 MB (3 partes) |
+| `perfil_deficiencia` | `perfil_eleitor_deficiencia_2026_RJ.csv` | 155.199 | 36,2 MB | 2,6 MB |
+
+Cada pasta traz o `leiame.pdf` original do respectivo conjunto — são documentos
+**diferentes** entre si, um por conjunto.
+
+**Ao ler os CSVs**: são `ISO-8859-1` (Latin-1), sem BOM, separador `;`, campos de
+texto entre aspas duplas. As coordenadas de `locais_votacao` usam **vírgula
+decimal**, e `-1` é o código de ausência de valor (não um valor real).
+
+```python
+pd.read_csv(caminho, sep=";", encoding="latin-1", decimal=",")
+```
+
+A chave de junção entre os três conjuntos é `CD_MUNICIPIO` + `NR_ZONA` + `NR_SECAO`.
+Atenção: `perfil_deficiencia` é **microdado individual** (uma linha por eleitor,
+com `SQ_ELEITOR`), enquanto os outros dois são agregados — por isso este
+repositório é privado.
+
+Origem: <https://dadosabertos.tse.jus.br/>. O CDN do TSE (`cdn.tse.jus.br`) fica
+atrás de Akamai e bloqueia clientes de linha de comando por fingerprint TLS —
+`curl` e `Invoke-WebRequest` levam 403 mesmo com cabeçalhos de navegador. O
+download funcionou via `Start-BitsTransfer` (WinHTTP).
 
 ## Dados pendentes
 
@@ -95,6 +145,8 @@ Sobre o mapa em si: a primeira versão usava Leaflet (via `folium`), mas a bibli
 - [x] Teto legal de subsídio de vereador por município
 - [x] Primeiro mapa coroplético (população, vereadores ou teto de subsídio por município)
 - [x] Diagrama Executivo x Legislativo, com definição de cada poder e órgãos subordinados no estado e no município
+- [x] Baixar os dados de eleitorado do TSE para o RJ (locais de votação, perfil por seção, eleitores com deficiência)
+- [ ] Tratar os brutos do TSE e gerar agregados em `data/processed/`
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [ ] Mapas para o Pleito Estadual e Federal
 - [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

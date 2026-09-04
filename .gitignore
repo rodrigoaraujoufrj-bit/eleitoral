@@ -11,6 +11,15 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Exceção: os brutos do TSE entram versionados em forma comprimida.
+# Os .csv descomprimidos continuam fora do versionamento — gere-os com
+# `python src/restaurar_dados.py`.
+!data/raw/*/
+data/raw/*/*
+!data/raw/*/*.gz
+!data/raw/*/*.gz.part*
+!data/raw/*/leiame.pdf
+
 # Editores
 .vscode/
 .idea/

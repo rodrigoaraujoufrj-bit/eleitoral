@@ -1,0 +1,7 @@
+# Dados brutos do TSE: binarios. Marcados explicitamente porque core.autocrlf
+# esta ligado nesta maquina e uma conversao de fim de linha corromperia os
+# arquivos comprimidos e suas partes.
+*.gz        binary
+*.gz.part*  binary
+*.pdf       binary
+*.csv       binary

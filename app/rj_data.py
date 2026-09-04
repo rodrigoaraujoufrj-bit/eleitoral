@@ -13,11 +13,14 @@ Números confirmados por fonte (setembro de 2026):
   é alternada a cada eleição (1/3, depois 2/3). Em 2022 o RJ renovou 1
   vaga, então em 2026 é a vez de renovar as outras 2.
 - Vereadores: varia por município, conforme a Constituição (Art. 29, IV),
-  de 9 (até 15 mil habitantes) a 55 (mais de 8 milhões). Depende da
-  população de cada município (censo 2022), ainda não carregada aqui.
+  de 9 (até 15 mil habitantes) a 55 (mais de 8 milhões). Calculado em
+  municipios_rj.py a partir da população de cada um dos 92 municípios
+  (censo 2022): soma 1.376 vereadores no RJ.
 """
 
-MUNICIPIOS_RJ_TOTAL = 92
+from municipios_rj import MUNICIPIOS_RJ, VEREADORES_RJ_TOTAL
+
+MUNICIPIOS_RJ_TOTAL = len(MUNICIPIOS_RJ)
 
 CARGOS_RJ = [
     {
@@ -29,8 +32,8 @@ CARGOS_RJ = [
     {
         "cargo": "Vereador",
         "pleito": "Municipal",
-        "vagas": None,
-        "explicacao": "Cada município tem de 9 a 55 vereadores, dependendo da população, conforme a Constituição (Art. 29, IV). Falta carregar a população de cada um dos 92 municípios para calcular o total exato.",
+        "vagas": VEREADORES_RJ_TOTAL,
+        "explicacao": "Cada município tem de 9 a 55 vereadores, dependendo da população, conforme a Constituição (Art. 29, IV). Some os 92 municípios do RJ e o total é 1.376.",
     },
     {
         "cargo": "Presidente da República",

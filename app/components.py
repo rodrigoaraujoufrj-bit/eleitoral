@@ -33,10 +33,13 @@ def render_vagas_resumo(cargos_rj: list):
             st.caption(cargo["explicacao"])
 
 
-def formatar_reais(valor: float, casas_decimais: int = 2) -> str:
+def formatar_numero(valor: float, casas_decimais: int = 2) -> str:
     texto = f"{valor:,.{casas_decimais}f}"
-    texto = texto.replace(",", "_").replace(".", ",").replace("_", ".")
-    return f"R$ {texto}"
+    return texto.replace(",", "_").replace(".", ",").replace("_", ".")
+
+
+def formatar_reais(valor: float, casas_decimais: int = 2) -> str:
+    return f"R$ {formatar_numero(valor, casas_decimais)}"
 
 
 def render_salarios_resumo(cargos_rj: list):
@@ -44,11 +47,17 @@ def render_salarios_resumo(cargos_rj: list):
     colunas = st.columns(len(cargos_rj))
     for coluna, cargo in zip(colunas, cargos_rj):
         with coluna:
-            if cargo["salario"] is None:
-                st.metric(cargo["cargo"], "Varia")
-            else:
+            if cargo["salario"] is not None:
                 # Sem centavos no cartão, para caber; valor exato na legenda.
                 st.metric(cargo["cargo"], formatar_reais(cargo["salario"], 0))
                 st.caption(f"Valor exato: {formatar_reais(cargo['salario'])}")
+            elif cargo.get("salario_min") is not None and cargo.get("salario_max") is not None:
+                # Só um "R$" na string toda: dois cifrões no mesmo texto do
+                # metric fazem o Streamlit interpretar o meio como fórmula.
+                minimo = formatar_numero(cargo["salario_min"], 0)
+                maximo = formatar_numero(cargo["salario_max"], 0)
+                st.metric(cargo["cargo"], f"R$ {minimo} a {maximo}")
+            else:
+                st.metric(cargo["cargo"], "Varia")
             if cargo.get("salario_nota"):
                 st.caption(cargo["salario_nota"])

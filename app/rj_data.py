@@ -25,6 +25,8 @@ Números confirmados por fonte (setembro de 2026):
 from municipios_rj import MUNICIPIOS_RJ, VEREADORES_RJ_TOTAL
 
 MUNICIPIOS_RJ_TOTAL = len(MUNICIPIOS_RJ)
+TETO_VEREADOR_MIN = min(m["teto_vereador"] for m in MUNICIPIOS_RJ)
+TETO_VEREADOR_MAX = max(m["teto_vereador"] for m in MUNICIPIOS_RJ)
 
 CARGOS_RJ = [
     {
@@ -33,7 +35,9 @@ CARGOS_RJ = [
         "vagas": MUNICIPIOS_RJ_TOTAL,
         "explicacao": "Um prefeito para cada um dos 92 municípios do RJ.",
         "salario": None,
-        "salario_nota": "Fixado por lei de cada Câmara Municipal, varia bastante. Exemplo: o prefeito da capital (Rio de Janeiro) recebe R$ 35.608,27 de subsídio bruto.",
+        "salario_min": None,
+        "salario_max": None,
+        "salario_nota": "Fixado por lei de cada Câmara Municipal, sem fórmula ligada à população. Não temos dado dos 92 municípios para dar um intervalo real. Exemplo: o prefeito da capital (Rio de Janeiro) recebe R$ 35.608,27 de subsídio bruto.",
     },
     {
         "cargo": "Vereador",
@@ -41,7 +45,9 @@ CARGOS_RJ = [
         "vagas": VEREADORES_RJ_TOTAL,
         "explicacao": "Cada município tem de 9 a 55 vereadores, dependendo da população, conforme a Constituição (Art. 29, IV). Some os 92 municípios do RJ e o total é 1.376.",
         "salario": None,
-        "salario_nota": "Tem teto de 20% a 75% do subsídio do deputado estadual, dependendo da população do município (Art. 29, VI da Constituição). Veja o teto de cada município na tabela abaixo.",
+        "salario_min": TETO_VEREADOR_MIN,
+        "salario_max": TETO_VEREADOR_MAX,
+        "salario_nota": "Teto legal (Art. 29, VI da Constituição): de 20% a 75% do subsídio do deputado estadual, dependendo da população do município. Veja o teto de cada município na tabela abaixo.",
     },
     {
         "cargo": "Presidente da República",

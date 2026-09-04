@@ -44,6 +44,7 @@ eleitoral/
 │   ├── components.py             # cards e resumo de vagas, reutilizados nas páginas
 │   ├── cargos_data.py            # funções e deveres de cada cargo, com o pleito a que pertence
 │   ├── rj_data.py                # quantidade de vagas de cada cargo no RJ
+│   ├── municipios_rj.py          # população e vereadores dos 92 municípios do RJ
 │   └── views/
 │       ├── home.py
 │       ├── pleito_municipal.py
@@ -68,9 +69,8 @@ streamlit run app/app.py
 
 ## Dados pendentes
 
-Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, Wikipédia bloqueados), então os itens abaixo dependem de um arquivo baixado localmente e compartilhado com o projeto:
+Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, Wikipédia bloqueados). A população dos municípios (para o cálculo de vereadores) foi colada manualmente a partir da Wikipédia. O item abaixo ainda depende de um arquivo ou de valores compartilhados com o projeto:
 
-- **Vereadores por município**: a Constituição (Art. 29, IV) define de 9 a 55 vereadores por município conforme a população, mas falta a população de cada um dos 92 municípios do RJ (censo 2022, IBGE) para calcular o total exato. Alternativa mais direta: o dataset "Vagas" do TSE (dadosabertos.tse.jus.br) já traz o número de vagas por município.
 - **Salário de cada cargo**: subsídio de presidente, governador, senador, deputado federal, deputado estadual, prefeito e vereador (esses dois últimos variam por município e têm teto definido por lei).
 
 ## Próximos passos
@@ -79,7 +79,7 @@ Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, W
 - [x] Identidade visual (tema roxo ardósia + âmbar)
 - [x] Definir recorte geográfico (RJ, 92 municípios)
 - [x] Definir pleitos e separar o app em duas seções (municipal / estadual e federal)
-- [x] Quantidade de vagas por cargo no RJ (exceto vereador, pendente de dados)
-- [ ] Carregar população dos municípios do RJ para calcular vereadores por município
+- [x] Quantidade de vagas por cargo no RJ
+- [x] Vereadores por município (1.376 no total), com base na população do Censo 2022
 - [ ] Adicionar salário de cada cargo
 - [ ] Prototipar o primeiro mapa

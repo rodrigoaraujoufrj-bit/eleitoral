@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# Dados (baixados/gerados, não versionados)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Editores
+.vscode/
+.idea/
+
+# OS
+.DS_Store

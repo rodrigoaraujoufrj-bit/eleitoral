@@ -142,6 +142,20 @@ Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, W
 
 O contorno geográfico dos municípios (para o mapa) veio de um repositório público no GitHub (`raw.githubusercontent.com`, não bloqueado aqui), então esse item não teve o mesmo problema.
 
+**Correção importante em `app/geo/rj_municipios.geojson`**: 6 municípios com litoral complexo
+(Rio de Janeiro, Macaé, Paraty, Angra dos Reis, Mangaratiba, Itaguaí) tinham a
+geometria corrompida na fonte original — cada ilha virou um "anel" a mais dentro
+de um único `Polygon`, em vez de cada uma virar seu próprio polígono num
+`MultiPolygon`. O GeoJSON tratava o primeiro anel como área externa e todo o
+resto como buraco a subtrair, dando geometria inválida (área negativa,
+`is_valid=False`) e, no caso do Rio, um polígono efetivamente de ~200 metros
+de largura. Corrigido reconstruindo cada um como a união de seus anéis como
+polígonos independentes; as áreas resultantes batem com os valores reais
+conhecidos (Rio: 1.186,6 km², Macaé: 1.217,6 km², Paraty: 926,7 km² etc.) e a
+cobertura de pontos do TSE dentro do próprio contorno subiu de 66% para 99,8%
+do estado inteiro. Não é possível garantir que os mapas mostrados antes dessa
+correção estivessem exibindo o Rio de Janeiro corretamente.
+
 Sobre o mapa em si: a primeira versão usava Leaflet (via `folium`), mas a biblioteca e as camadas de mapa (tiles) vêm de CDNs externos (jsdelivr, CartoDB, OpenStreetMap), todos bloqueados nesta sessão. Trocado por um mapa estático com `geopandas`/`matplotlib`, que não depende de nada externo em tempo de execução, nem aqui nem para quem for rodar o app.
 
 Os locais de votação vieram assim: outra sessão do Claude Code, rodando localmente (sem essa restrição de rede), baixou os três conjuntos do TSE e subiu pro GitHub comprimidos, seguindo o padrão de "usar o GitHub como ponte" descrito acima.

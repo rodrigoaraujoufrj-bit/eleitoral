@@ -1,7 +1,7 @@
 import streamlit as st
 
 from cargos_data import CARGOS
-from components import render_cargo_card, render_vagas_resumo
+from components import render_cargo_card, render_salarios_resumo, render_vagas_resumo
 from rj_data import CARGOS_RJ
 
 st.title("Pleito Estadual e Federal")
@@ -12,6 +12,9 @@ cargos_gerais = [c for c in CARGOS if c["pleito"] == "Estadual e Federal"]
 
 st.subheader("Quantas vagas no RJ")
 render_vagas_resumo(cargos_gerais_rj)
+
+st.subheader("Quanto ganha cada cargo")
+render_salarios_resumo(cargos_gerais_rj)
 
 st.subheader("O que cada cargo faz")
 for cargo in cargos_gerais:

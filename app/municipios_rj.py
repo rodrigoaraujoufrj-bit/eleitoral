@@ -1,4 +1,5 @@
-"""População e número de vereadores dos 92 municípios do RJ.
+"""População, número de vereadores e teto de subsídio de vereador dos 92
+municípios do RJ.
 
 População: Censo 2022 (IBGE), via "Lista de municípios do Rio de Janeiro
 por população" (Wikipédia). É a base oficial usada para definir vagas nas
@@ -7,7 +8,30 @@ eleições municipais de 2024 em diante.
 Vereadores: calculados pela regra da Constituição Federal (Art. 29, IV),
 que define de 9 a 55 vereadores por município conforme faixas de
 população.
+
+Teto de vereador: a Constituição (Art. 29, VI) limita o subsídio do
+vereador a um percentual do subsídio do deputado estadual, também por
+faixa de população. É o valor MÁXIMO permitido, a Câmara de cada
+município pode fixar um valor menor por lei própria.
 """
+
+SUBSIDIO_DEPUTADO_ESTADUAL_RJ = 34_774.64  # ALERJ, valor confirmado por busca
+
+FAIXAS_TETO_VEREADOR = [
+    (10_000, 0.20),
+    (50_000, 0.30),
+    (100_000, 0.40),
+    (300_000, 0.50),
+    (500_000, 0.60),
+]
+
+
+def teto_vereador(populacao: int, subsidio_deputado_estadual: float = SUBSIDIO_DEPUTADO_ESTADUAL_RJ) -> float:
+    for limite, percentual in FAIXAS_TETO_VEREADOR:
+        if populacao <= limite:
+            return round(subsidio_deputado_estadual * percentual, 2)
+    return round(subsidio_deputado_estadual * 0.75, 2)
+
 
 FAIXAS_VEREADORES = [
     (15_000, 9),
@@ -140,5 +164,6 @@ MUNICIPIOS_RJ = [
 
 for _m in MUNICIPIOS_RJ:
     _m["vereadores"] = vereadores_por_populacao(_m["populacao_2022"])
+    _m["teto_vereador"] = teto_vereador(_m["populacao_2022"])
 
 VEREADORES_RJ_TOTAL = sum(m["vereadores"] for m in MUNICIPIOS_RJ)

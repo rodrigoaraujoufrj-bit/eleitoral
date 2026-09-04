@@ -14,6 +14,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 
 - Explicar de forma clara o que cada cargo eletivo faz de fato, para direcionar melhor a cobrança política e o voto
 - Mostrar quantas vagas de cada cargo estão em disputa no RJ (por município, quando for o caso)
+- Mostrar quanto cada cargo ganha (subsídio), incluindo o teto de vereador por município
 - Análise geoespacial e dashboard interativo com mapas e indicadores, navegável pelo navegador
 
 ## Páginas do app
@@ -69,9 +70,10 @@ streamlit run app/app.py
 
 ## Dados pendentes
 
-Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, Wikipédia bloqueados). A população dos municípios (para o cálculo de vereadores) foi colada manualmente a partir da Wikipédia. O item abaixo ainda depende de um arquivo ou de valores compartilhados com o projeto:
+Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, Wikipédia bloqueados). A população dos municípios e os salários foram obtidos por busca (com fonte) ou colados manualmente a partir da Wikipédia, não baixados de um arquivo oficial.
 
-- **Salário de cada cargo**: subsídio de presidente, governador, senador, deputado federal, deputado estadual, prefeito e vereador (esses dois últimos variam por município e têm teto definido por lei).
+- **Salário de prefeito por município**: não existe fórmula constitucional (é fixado por lei de cada Câmara Municipal). Hoje o app mostra só o exemplo da capital.
+- **Salário efetivo de vereador por município**: o app mostra o teto legal (máximo permitido), não o valor que cada Câmara efetivamente paga, que pode ser menor.
 
 ## Próximos passos
 
@@ -81,5 +83,7 @@ Esta sessão roda num ambiente sem acesso de rede a sites externos (TSE, IBGE, W
 - [x] Definir pleitos e separar o app em duas seções (municipal / estadual e federal)
 - [x] Quantidade de vagas por cargo no RJ
 - [x] Vereadores por município (1.376 no total), com base na população do Censo 2022
-- [ ] Adicionar salário de cada cargo
+- [x] Salário de presidente, governador, senador, deputado federal e deputado estadual
+- [x] Teto legal de subsídio de vereador por município
+- [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [ ] Prototipar o primeiro mapa

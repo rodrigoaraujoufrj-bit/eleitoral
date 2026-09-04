@@ -47,6 +47,7 @@ eleitoral/
 │   ├── rj_data.py                # quantidade de vagas de cada cargo no RJ
 │   ├── municipios_rj.py          # população e vereadores dos 92 municípios do RJ
 │   ├── mapa_municipal.py         # mapa coroplético dos municípios do RJ
+│   ├── diagrama_poderes.py       # diagrama Executivo x Legislativo e órgãos subordinados
 │   ├── geo/
 │   │   └── rj_municipios.geojson # contorno dos 92 municípios (fonte: GitHub, tbrugz/geodata-br)
 │   └── views/
@@ -93,6 +94,7 @@ Sobre o mapa em si: a primeira versão usava Leaflet (via `folium`), mas a bibli
 - [x] Salário de presidente, governador, senador, deputado federal e deputado estadual
 - [x] Teto legal de subsídio de vereador por município
 - [x] Primeiro mapa coroplético (população, vereadores ou teto de subsídio por município)
+- [x] Diagrama Executivo x Legislativo, com definição de cada poder e órgãos subordinados no estado e no município
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [ ] Mapas para o Pleito Estadual e Federal
 - [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

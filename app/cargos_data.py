@@ -86,6 +86,14 @@ CARGOS = [
             "Não é responsável pela educação infantil nem pelo ensino fundamental, que são atribuições municipais",
             "Não interfere na administração de outro estado",
         ],
+        "orgaos_subordinados": [
+            "Secretarias de Estado (Educação, Saúde, Fazenda, entre outras)",
+            "Polícia Militar",
+            "Polícia Civil",
+            "Corpo de Bombeiros Militar",
+            "Detran",
+            "Hospitais estaduais",
+        ],
     },
     {
         "esfera": "Estadual",
@@ -102,6 +110,10 @@ CARGOS = [
         "nao_atribuicoes": [
             "Não executa obras nem presta serviços",
             "Não tem poder sobre leis federais ou municipais",
+        ],
+        "orgaos_subordinados": [
+            "Comissões permanentes e temporárias da Assembleia",
+            "Auxiliada pelo Tribunal de Contas do Estado (TCE-RJ) na fiscalização das contas públicas",
         ],
     },
     {
@@ -123,6 +135,12 @@ CARGOS = [
             "Não administra hospitais estaduais nem escolas de ensino médio",
             "Não decide sobre estradas estaduais ou federais",
         ],
+        "orgaos_subordinados": [
+            "Secretarias Municipais (Educação, Saúde, Obras, entre outras)",
+            "Guarda Municipal",
+            "UBS e postos de saúde",
+            "Escolas municipais (infantil e fundamental)",
+        ],
     },
     {
         "esfera": "Municipal",
@@ -141,8 +159,29 @@ CARGOS = [
             "Não contrata funcionários",
             "Não decide sozinho sobre obras, aprova o orçamento, mas quem executa é o prefeito",
         ],
+        "orgaos_subordinados": [
+            "Comissões da Câmara Municipal",
+            "Fiscalizada pelo Tribunal de Contas do Estado (TCE-RJ), que também audita as contas dos municípios",
+        ],
     },
 ]
+
+# Definição geral de cada Poder, para o diagrama de Executivo x Legislativo.
+DEFINICOES_PODER = {
+    "Executivo": (
+        "Administra e executa as políticas públicas no dia a dia, prestando "
+        "serviços diretos à população. É chefiado por um único cargo eleito "
+        "(presidente, governador ou prefeito), que nomeia uma equipe de "
+        "secretários ou ministros para comandar as diferentes áreas da "
+        "administração."
+    ),
+    "Legislativo": (
+        "Cria e aprova as leis, aprova o orçamento e fiscaliza o Executivo. "
+        "É formado por um grupo de representantes eleitos (deputados, "
+        "senadores ou vereadores), reunidos numa casa legislativa (Congresso, "
+        "Assembleia ou Câmara Municipal), e não por um único cargo."
+    ),
+}
 
 # No Brasil, vereador e prefeito são eleitos num pleito (municipal) e os
 # demais cargos noutro (estadual e federal, no mesmo ano). O app segue essa

@@ -1,18 +1,22 @@
 """Perfil do eleitorado do RJ por zona eleitoral (TSE, perfil_secao agregado).
 
 Ver `src/tratar_perfil_secao.py` para como
-`data/processed/perfil_eleitorado_zona.parquet` é gerado: uma linha por
-zona e combinação de gênero, faixa etária, grau de escolaridade e
-raça/cor, com o total de eleitores naquela combinação. A combinação é
-preservada (não cada dimensão separada) para permitir filtrar por mais de
-uma dimensão ao mesmo tempo sem perder a relação entre elas.
+`data/processed/perfil_eleitorado_local.parquet` é gerado: uma linha por
+local de votação e combinação de gênero, faixa etária, grau de
+escolaridade e raça/cor, com o total de eleitores naquela combinação. A
+combinação é preservada (não cada dimensão separada) para permitir
+filtrar por mais de uma dimensão ao mesmo tempo sem perder a relação entre
+elas. A granularidade é por local (não por zona) porque é a mesma chave
+usada em `perfil_eleitorado_bairro.py` para juntar com o bairro; para
+análise por zona (`eleitores_por_zona` abaixo), essa granularidade extra
+só soma junto sem atrapalhar.
 """
 
 from pathlib import Path
 
 import pandas as pd
 
-PERFIL_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "perfil_eleitorado_zona.parquet"
+PERFIL_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "perfil_eleitorado_local.parquet"
 
 ORDEM_GENERO = ["FEMININO", "MASCULINO", "NÃO INFORMADO"]
 

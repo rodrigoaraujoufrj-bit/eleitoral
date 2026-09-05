@@ -22,7 +22,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 - **Home**: apresentação do projeto
 - **Pleito Municipal**: vereador e prefeito, quantas vagas no RJ, o que cada cargo faz, mapa por município e área de influência de cada zona eleitoral
 - **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente, quantas vagas no RJ e o que cada cargo faz
-- **Análise do Eleitorado**: perfil do eleitorado por zona (gênero, faixa etária, escolaridade, raça/cor), com recorte opcional por município e mapa que dá zoom nas zonas onde o perfil filtrado é mais forte
+- **Análise do Eleitorado**: perfil do eleitorado por zona ou, dentro de 1 município, por bairro (gênero, faixa etária, escolaridade, raça/cor), com recorte opcional por município e mapa que dá zoom onde o perfil filtrado é mais forte
 
 ## Stack
 
@@ -52,7 +52,8 @@ eleitoral/
 │   ├── setores_censitarios.py    # setores censitários do RJ (IBGE, Censo 2022)
 │   ├── areas_influencia.py       # área de influência de cada zona eleitoral (setor + Voronoi)
 │   ├── perfil_eleitorado.py      # perfil do eleitorado por zona, com filtros combináveis
-│   ├── mapa_perfil_eleitorado.py # mapa coroplético por zona, com zoom nas zonas filtradas
+│   ├── perfil_eleitorado_bairro.py # o mesmo, por bairro, dentro de 1 município
+│   ├── mapa_perfil_eleitorado.py # mapa coroplético por zona ou bairro, com zoom no filtrado
 │   ├── diagrama_poderes.py       # diagrama Executivo x Legislativo e órgãos subordinados
 │   ├── geo/
 │   │   ├── rj_municipios.geojson          # contorno dos 92 municípios (fonte: GitHub, tbrugz/geodata-br)
@@ -64,13 +65,13 @@ eleitoral/
 │       └── perfil_eleitorado.py
 ├── src/
 │   ├── restaurar_dados.py        # remonta e descomprime os brutos do TSE
-│   └── tratar_perfil_secao.py    # agrega o perfil do eleitorado por zona
+│   └── tratar_perfil_secao.py    # agrega o perfil do eleitorado por local de votação
 ├── data/
 │   ├── raw/        # brutos do TSE, versionados comprimidos (ver abaixo)
 │   │   ├── locais_votacao/       # eleitorado por local de votação (RJ)
 │   │   ├── perfil_secao/         # perfil do eleitorado por seção (RJ)
 │   │   └── perfil_deficiencia/   # eleitores com deficiência (RJ)
-│   └── processed/  # dados já tratados (não versionados), ver `perfil_eleitorado_zona.parquet`
+│   └── processed/  # dados já tratados (não versionados), ver `perfil_eleitorado_local.parquet`
 ├── notebooks/      # exploração e prototipagem
 ├── requirements.txt
 └── README.md
@@ -183,48 +184,62 @@ detalhe já usado no contorno dos municípios. O arquivo nacional (~473 mil
 setores) foi filtrado para o RJ e salvo em `app/geo/rj_setores_censitarios.parquet`
 (GeoParquet, 8,5 MB, bem mais compacto que GeoJSON para 42 mil polígonos).
 
-## Perfil do eleitorado por zona
+## Perfil do eleitorado por zona ou por bairro
 
 `src/tratar_perfil_secao.py` agrega `perfil_secao` (6,9 milhões de linhas,
-uma por combinação de seção e categoria) por zona eleitoral, somando
-`QT_ELEITORES` em quatro dimensões publicadas pelo TSE: gênero, faixa
-etária, grau de escolaridade e raça/cor. Mantém a combinação completa
-dessas quatro dimensões por zona (não cada uma separada), porque é isso
-que permite depois filtrar por mais de uma dimensão ao mesmo tempo (por
-exemplo "mulheres jovens com ensino médio incompleto") sem perder a
-relação entre elas. Roda em menos de 30 segundos (lê o CSV em pedaços de
-500 mil linhas, já agregando cada pedaço antes de somar, para não
-estourar memória com um arquivo de 1,7 GB) e gera
-`data/processed/perfil_eleitorado_zona.parquet` (182 mil linhas, bem
-abaixo do teto teórico de combinações possíveis), não versionado:
+uma por combinação de seção e categoria) por **local de votação**
+(município + zona + número do local), somando `QT_ELEITORES` em quatro
+dimensões publicadas pelo TSE: gênero, faixa etária, grau de escolaridade
+e raça/cor. Mantém a combinação completa dessas quatro dimensões (não
+cada uma separada), porque é isso que permite depois filtrar por mais de
+uma dimensão ao mesmo tempo (por exemplo "mulheres jovens com ensino
+médio incompleto") sem perder a relação entre elas. Roda em pouco mais de
+um minuto (lê o CSV em pedaços de 500 mil linhas, já agregando cada
+pedaço antes de somar, para não estourar memória com um arquivo de 1,7 GB)
+e gera `data/processed/perfil_eleitorado_local.parquet` (1,9 milhão de
+linhas, 3,5 MB), não versionado:
 
 ```bash
 python src/tratar_perfil_secao.py
 ```
 
+A granularidade é por local, não por zona, porque `perfil_secao` não traz
+bairro (só `locais_votacao` traz), e local de votação é a única chave em
+comum entre os dois conjuntos do TSE para juntar os dois depois. Quem só
+precisa de zona (`app/perfil_eleitorado.py`) soma esse resultado por
+município + zona, sem perder nada.
+
 Validado: as 165 zonas batem exatamente com as de `locais_votacao.py`, o
 total de eleitores do RJ (12,86 milhões) é compatível com o esperado para
-o estado, e sem nenhum filtro aplicado cada zona soma exatamente 100% do
+o estado, sem nenhum filtro aplicado cada zona soma exatamente 100% do
 seu próprio eleitorado (garantindo que a agregação não perde nem duplica
-ninguém).
+ninguém), e ao juntar com bairro (`app/perfil_eleitorado_bairro.py`) só
+0,016% dos eleitores ficam sem bairro (os poucos locais sem coordenada,
+já excluídos de `locais_votacao.py`).
 
-A página **Análise do Eleitorado > Perfil por Zona** usa isso em duas
+A página **Análise do Eleitorado > Perfil por Zona** usa isso em três
 etapas. Primeiro "Onde": um recorte opcional de um ou mais municípios,
 porque um candidato a vereador ou prefeito só disputa no próprio
-município, não faz sentido misturar com área de fora. Depois "Quem": os
-filtros de gênero, faixa etária, escolaridade e raça/cor
-(`app/perfil_eleitorado.py` calcula, por zona, quantos eleitores passam no
-filtro e qual fração é do recorte todo). O usuário escolhe ordenar pelo
-número absoluto ou pelo percentual de concentração, e o mapa
-(`app/mapa_perfil_eleitorado.py`) dá zoom automaticamente nas zonas de
-maior valor dentro do recorte, com a borda destacada em âmbar.
+município, não faz sentido misturar com área de fora. Com **exatamente
+um** município selecionado, aparece um segundo controle, "Nível de
+análise": zona eleitoral (o padrão) ou **bairro**, uma unidade bem menor,
+mais parecida com o que um candidato a vereador realmente enxerga ao
+planejar campanha (bairro não faz sentido sem recorte de município, o
+mesmo nome, como "Centro", se repete em vários). Depois "Quem": os
+filtros de gênero, faixa etária, escolaridade e raça/cor. O usuário
+escolhe ordenar pelo número absoluto ou pelo percentual de concentração,
+e o mapa dá zoom automaticamente nas zonas ou bairros de maior valor
+dentro do recorte, com a borda destacada em âmbar.
 
 Uma zona pode abranger mais de um município (18 das 165 no RJ). Sem
 recorte, a tabela mostra os nomes separados por "/", do que tem mais
 eleitores na zona para o que tem menos. Com um município selecionado, o
 recorte já ignora eleitores de fora dele nessa zona (tanto no total quanto
 no mapa, que mostra só a fatia de setores censitários cujo local de
-votação mais próximo é desse município, não a zona inteira).
+votação mais próximo é desse município, não a zona inteira). A mesma
+lógica de "local mais próximo" (ver `app/areas_influencia.py`) é reusada
+para desenhar os bairros: cada setor censitário vira parte do bairro do
+seu local de votação mais próximo.
 
 É composição demográfica do eleitorado registrado (dado real do TSE), não
 dado de comportamento, consumo ou intenção de voto, e a página deixa isso
@@ -296,6 +311,7 @@ Os locais de votação vieram assim: outra sessão do Claude Code, rodando local
 - [x] Área de influência de cada zona eleitoral (setor censitário + local mais próximo, dissolvido por zona), estado inteiro e zoom no Rio
 - [x] Tratar `perfil_secao` e gerar agregado por zona em `data/processed/`
 - [x] Página de perfil do eleitorado por zona, com filtros combináveis e mapa com zoom automático
+- [x] Recorte espacial por município, e perfil do eleitorado por bairro dentro de 1 município
 - [ ] Tratar `perfil_deficiencia` e gerar agregado em `data/processed/`
 - [ ] Pontos de interesse (transporte público, comércio) via OpenStreetMap, quando achar uma fonte acessível
 - [ ] Renda por setor censitário (IBGE), para cruzar com o perfil do eleitorado

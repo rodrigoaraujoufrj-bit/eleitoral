@@ -1,13 +1,13 @@
-"""Mapa do perfil do eleitorado por zona, colorido por uma métrica de filtro.
+"""Mapa do perfil do eleitorado por zona ou por bairro, colorido por uma métrica de filtro.
 
-Reaproveita a geometria de zona de `areas_influencia.py` (setor censitário
-atribuído ao local de votação mais próximo, dissolvido por zona), mas
-colore cada zona por um valor calculado em `perfil_eleitorado.py` (número
-ou percentual de eleitores que passam num filtro), não por uma cor
-categórica por zona. Pode restringir a um recorte de município (um
-candidato a vereador só disputa no próprio município, não faz sentido
-mostrar área de outros) e/ou dar zoom só nas zonas de maior valor dentro
-desse recorte.
+Reaproveita a geometria de `areas_influencia.py` (setor censitário
+atribuído ao local de votação mais próximo), mas colore cada zona ou
+bairro por um valor calculado em `perfil_eleitorado.py`/
+`perfil_eleitorado_bairro.py` (número ou percentual de eleitores que
+passam num filtro), não por uma cor categórica. Pode restringir a um
+recorte de município (um candidato a vereador só disputa no próprio
+município, não faz sentido mostrar área de outros) e/ou dar zoom só nas
+zonas ou bairros de maior valor dentro desse recorte.
 """
 
 import geopandas as gpd
@@ -40,24 +40,47 @@ def carregar_zonas_geometria(
     return areas.reset_index()[["zona", "geometry"]]
 
 
+def carregar_bairros_geometria(
+    setores: gpd.GeoDataFrame, locais_votacao: pd.DataFrame, municipio: str
+) -> gpd.GeoDataFrame:
+    """Geometria de cada bairro de um único município (nome em maiúsculas).
+
+    Mesma lógica de `carregar_zonas_geometria`, só que dissolvida por
+    bairro em vez de por zona, e sempre restrita a um município (nome de
+    bairro se repete entre municípios, então não faz sentido dissolver
+    sem esse recorte).
+    """
+    pontos = gpd.GeoDataFrame(
+        locais_votacao,
+        geometry=gpd.points_from_xy(locais_votacao["lon"], locais_votacao["lat"]),
+        crs="EPSG:4326",
+    )
+    setores_com_local, _ = calcular_areas_influencia(setores, pontos)
+    setores_do_municipio = setores_com_local[setores_com_local["municipio"] == municipio]
+    bairros = setores_do_municipio.dissolve(by="bairro")
+    return bairros.reset_index()[["bairro", "geometry"]]
+
+
 def montar_mapa_perfil(
     zonas_geometria: gpd.GeoDataFrame,
     valores_por_zona: pd.Series,
     legenda: str,
     zonas_alvo: list[str] | None = None,
     municipios_geometria: gpd.GeoDataFrame | None = None,
+    coluna_unidade: str = "zona",
 ):
-    """Mapa coroplético por zona.
+    """Mapa coroplético por zona (ou por bairro, com `coluna_unidade="bairro"`).
 
     `municipios_geometria`, se passado, troca o contorno de fundo (estado
     inteiro) pelos municípios selecionados e já enquadra a vista neles.
-    `zonas_alvo` desenha a borda em âmbar nessas zonas e tem prioridade
-    sobre `municipios_geometria` para o enquadramento, se as duas forem
-    passadas juntas.
+    `zonas_alvo` (nomes de zona ou de bairro, conforme `coluna_unidade`)
+    desenha a borda em âmbar nessas unidades e tem prioridade sobre
+    `municipios_geometria` para o enquadramento, se as duas forem passadas
+    juntas.
     """
     municipios = municipios_geometria if municipios_geometria is not None else carregar_geodataframe().to_crs(CRS_PROJETADA)
     zonas = zonas_geometria.copy()
-    zonas["valor"] = zonas["zona"].map(valores_por_zona).fillna(0)
+    zonas["valor"] = zonas[coluna_unidade].map(valores_por_zona).fillna(0)
 
     fig, ax = plt.subplots(figsize=(7, 8))
     municipios.plot(ax=ax, facecolor="#F1ECF6", edgecolor="#C9A6D9", linewidth=0.5)
@@ -73,7 +96,7 @@ def montar_mapa_perfil(
 
     limite_zoom = None
     if zonas_alvo:
-        destaque = zonas[zonas["zona"].isin(zonas_alvo)]
+        destaque = zonas[zonas[coluna_unidade].isin(zonas_alvo)]
         destaque.boundary.plot(ax=ax, color="#C9922E", linewidth=1.4)
         limite_zoom = destaque.total_bounds
     elif municipios_geometria is not None:

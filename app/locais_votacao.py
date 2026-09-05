@@ -12,6 +12,11 @@ município, então agrupar sem a zona funde locais físicos distintos (dava
 para o RJ é 5.183 (autoatendimento eleitoral, tse.jus.br); a diferença de
 ~2,8% é provavelmente só a data de geração deste extrato.
 
+O número original (`numero_local`) é mantido no resultado porque é a
+mesma chave usada em `perfil_secao` (município + zona + NR_LOCAL_VOTACAO):
+é assim que `perfil_eleitorado_bairro.py` cruza o perfil demográfico, que
+não tem bairro, com o bairro de cada local, que só existe aqui.
+
 Requer que data/raw/locais_votacao/eleitorado_local_votacao_2026_RJ.csv já
 tenha sido restaurado (python src/restaurar_dados.py).
 """
@@ -67,6 +72,7 @@ def carregar_locais_votacao() -> pd.DataFrame:
             eleitores=("eleitores_secao", "sum"),
         )
     )
-    agrupado = agrupado.drop(columns=["NM_MUNICIPIO", "NR_ZONA", "NR_LOCAL_VOTACAO"])
+    agrupado = agrupado.drop(columns=["NM_MUNICIPIO", "NR_ZONA"])
+    agrupado = agrupado.rename(columns={"NR_LOCAL_VOTACAO": "numero_local"})
     agrupado.insert(0, "id_local", agrupado.index)
     return agrupado

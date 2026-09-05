@@ -1,16 +1,22 @@
-"""Agrega o perfil do eleitorado (TSE, perfil_secao) por zona eleitoral do RJ.
+"""Agrega o perfil do eleitorado (TSE, perfil_secao) por local de votação do RJ.
 
 Lê data/raw/perfil_secao/perfil_eleitor_secao_2026_RJ.csv em pedaços (6,9
-milhões de linhas, 1,7 GB) e soma QT_ELEITORES por zona, mantendo a
-combinação completa de gênero, faixa etária, grau de escolaridade e
-raça/cor (não cada dimensão separada): é isso que permite depois filtrar
-por mais de uma dimensão ao mesmo tempo (por exemplo "mulheres jovens com
-ensino médio incompleto") sem perder a relação entre elas. Estado civil,
-identidade de gênero, quilombola e intérprete de libras existem no CSV mas
-não entram aqui por enquanto.
+milhões de linhas, 1,7 GB) e soma QT_ELEITORES por local de votação,
+mantendo a combinação completa de gênero, faixa etária, grau de
+escolaridade e raça/cor (não cada dimensão separada): é isso que permite
+depois filtrar por mais de uma dimensão ao mesmo tempo (por exemplo
+"mulheres jovens com ensino médio incompleto") sem perder a relação entre
+elas. Estado civil, identidade de gênero, quilombola e intérprete de
+libras existem no CSV mas não entram aqui por enquanto.
 
-Gera data/processed/perfil_eleitorado_zona.parquet. Não versionado (como o
-resto de data/processed/), rode antes de usar algo que dependa dele:
+A granularidade é por local de votação (município + zona + NR_LOCAL_VOTACAO),
+não por zona: `perfil_secao` não traz bairro, só `locais_votacao` traz
+(ver `app/locais_votacao.py`), e a única chave em comum entre os dois
+conjuntos do TSE é essa. Quem só precisa de zona (ver
+`app/perfil_eleitorado.py`) soma esse resultado por município + zona.
+
+Gera data/processed/perfil_eleitorado_local.parquet. Não versionado (como
+o resto de data/processed/), rode antes de usar algo que dependa dele:
 
     python src/tratar_perfil_secao.py
 """
@@ -22,12 +28,13 @@ import pandas as pd
 CSV_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "raw" / "perfil_secao" / "perfil_eleitor_secao_2026_RJ.csv"
 )
-OUT_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "perfil_eleitorado_zona.parquet"
+OUT_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "perfil_eleitorado_local.parquet"
 
 COLUNAS = {
     "CD_MUNICIPIO": "cd_municipio",
     "NM_MUNICIPIO": "municipio",
     "NR_ZONA": "zona",
+    "NR_LOCAL_VOTACAO": "numero_local",
     "DS_GENERO": "genero",
     "DS_FAIXA_ETARIA": "faixa_etaria",
     "DS_GRAU_ESCOLARIDADE": "escolaridade",

@@ -2,7 +2,12 @@ import streamlit as st
 
 from locais_votacao import carregar_locais_votacao, locais_votacao_disponivel
 from mapa_municipal import carregar_geodataframe
-from mapa_perfil_eleitorado import CRS_PROJETADA, carregar_zonas_geometria, montar_mapa_perfil
+from mapa_perfil_eleitorado import (
+    CRS_PROJETADA,
+    carregar_bairros_geometria,
+    carregar_zonas_geometria,
+    montar_mapa_perfil,
+)
 from municipios_rj import MUNICIPIOS_RJ
 from perfil_eleitorado import (
     ORDEM_ESCOLARIDADE,
@@ -13,6 +18,7 @@ from perfil_eleitorado import (
     eleitores_por_zona,
     perfil_eleitorado_disponivel,
 )
+from perfil_eleitorado_bairro import carregar_perfil_com_bairro, eleitores_por_bairro
 from setores_censitarios import carregar_setores
 
 NOMES_MUNICIPIOS = sorted(m["municipio"] for m in MUNICIPIOS_RJ)
@@ -23,13 +29,23 @@ def _zonas_geometria_cache(_setores, _locais_votacao, municipios: tuple[str, ...
     return carregar_zonas_geometria(_setores, _locais_votacao, municipios=list(municipios) or None)
 
 
+@st.cache_data(show_spinner="Calculando a geometria de cada bairro...")
+def _bairros_geometria_cache(_setores, _locais_votacao, municipio: str):
+    return carregar_bairros_geometria(_setores, _locais_votacao, municipio)
+
+
+@st.cache_data(show_spinner="Cruzando o perfil do eleitorado com o bairro de cada local...")
+def _perfil_com_bairro_cache(_locais_votacao):
+    return carregar_perfil_com_bairro(_locais_votacao)
+
+
 st.title("Perfil do Eleitorado por Zona")
 st.caption(
     "Combine um recorte de município com filtros de gênero, faixa etária, escolaridade e "
-    "raça/cor para ver em quais zonas eleitorais esse perfil está mais concentrado. Dado real "
-    "do TSE (eleição de 04/10/2026), agregado por zona a partir do conjunto perfil_secao. É "
-    "composição demográfica do eleitorado registrado, não dado de comportamento, consumo ou "
-    "intenção de voto."
+    "raça/cor para ver em quais zonas eleitorais (ou bairros, dentro de 1 município) esse "
+    "perfil está mais concentrado. Dado real do TSE (eleição de 04/10/2026), agregado a partir "
+    "do conjunto perfil_secao. É composição demográfica do eleitorado registrado, não dado de "
+    "comportamento, consumo ou intenção de voto."
 )
 
 if not perfil_eleitorado_disponivel():
@@ -39,8 +55,6 @@ if not perfil_eleitorado_disponivel():
 if not locais_votacao_disponivel():
     st.caption("Locais de votação: rode `python src/restaurar_dados.py` para restaurar esse conjunto de dados do TSE.")
     st.stop()
-
-perfil = carregar_perfil_eleitorado()
 
 st.subheader("Onde")
 municipios_selecionados = st.multiselect(
@@ -52,6 +66,19 @@ municipios_selecionados = st.multiselect(
 )
 municipios_filtro = [m.upper() for m in municipios_selecionados]
 
+opcoes_nivel = ["Zona eleitoral"]
+if len(municipios_filtro) == 1:
+    opcoes_nivel.append("Bairro")
+if len(opcoes_nivel) > 1:
+    nivel = st.radio("Nível de análise", options=opcoes_nivel, horizontal=True)
+else:
+    nivel = "Zona eleitoral"
+    st.caption(
+        "Selecione exatamente 1 município acima para analisar por bairro, uma unidade menor "
+        "que zona eleitoral, mais útil para quem disputa vereador."
+    )
+rotulo_unidade = "Bairro" if nivel == "Bairro" else "Zona"
+
 st.subheader("Quem")
 coluna_a, coluna_b = st.columns(2)
 with coluna_a:
@@ -61,17 +88,27 @@ with coluna_b:
     faixas_etarias = st.multiselect("Faixa etária", options=ORDEM_FAIXA_ETARIA, default=ORDEM_FAIXA_ETARIA)
     racas_cor = st.multiselect("Raça/cor", options=ORDEM_RACA_COR, default=ORDEM_RACA_COR)
 
-resultado = eleitores_por_zona(
-    perfil, generos, faixas_etarias, escolaridades, racas_cor, municipios=municipios_filtro or None
-)
+if nivel == "Bairro":
+    locais = carregar_locais_votacao()
+    perfil_com_bairro = _perfil_com_bairro_cache(locais)
+    resultado = eleitores_por_bairro(
+        perfil_com_bairro, municipios_filtro[0], generos, faixas_etarias, escolaridades, racas_cor
+    )
+    resultado = resultado.rename(columns={"bairro": "unidade", "eleitores_unidade": "eleitores_total"})
+else:
+    perfil = carregar_perfil_eleitorado()
+    resultado = eleitores_por_zona(
+        perfil, generos, faixas_etarias, escolaridades, racas_cor, municipios=municipios_filtro or None
+    )
+    resultado = resultado.rename(columns={"zona": "unidade", "eleitores_zona": "eleitores_total"})
 
 if resultado.empty:
-    st.warning("Nenhuma zona encontrada para esse recorte.")
+    st.warning(f"Nenhum(a) {rotulo_unidade.lower()} encontrado(a) para esse recorte.")
     st.stop()
 
-st.subheader("Zonas onde esse perfil é mais forte")
+st.subheader(f"{'Bairros' if nivel == 'Bairro' else 'Zonas'} onde esse perfil é mais forte")
 metrica = st.radio(
-    "Ordenar zonas por",
+    f"Ordenar {rotulo_unidade.lower()}s por",
     options=["Total de eleitores (número)", "Concentração na zona (%)"],
     horizontal=True,
 )
@@ -84,54 +121,50 @@ st.caption(
 )
 coluna_metrica = "percentual" if metrica.startswith("Concentração") else "eleitores_filtro"
 
-teto_zonas = min(30, len(resultado))
-piso_zonas = min(3, teto_zonas)
+teto = min(30, len(resultado))
+piso = min(3, teto)
 quantidade_alvo = st.slider(
-    "Quantas zonas destacar", min_value=piso_zonas, max_value=teto_zonas, value=min(10, teto_zonas)
+    f"Quantos(as) {rotulo_unidade.lower()}s destacar", min_value=piso, max_value=teto, value=min(10, teto)
 )
 
 ordenado = resultado.sort_values(coluna_metrica, ascending=False)
-zonas_alvo = ordenado.head(quantidade_alvo)["zona"].tolist()
+unidades_alvo = ordenado.head(quantidade_alvo)["unidade"].tolist()
 
-tabela = ordenado.head(quantidade_alvo).rename(
-    columns={
-        "municipio": "Município",
-        "zona": "Zona",
-        "eleitores_filtro": "Eleitores no filtro",
-        "eleitores_zona": "Total de eleitores na zona",
-        "percentual": "Concentração (%)",
-    }
-)
+renomear = {
+    "municipio": "Município",
+    "unidade": rotulo_unidade,
+    "eleitores_filtro": "Eleitores no filtro",
+    "eleitores_total": f"Total de eleitores no(a) {rotulo_unidade.lower()}",
+    "percentual": "Concentração (%)",
+}
+tabela = ordenado.head(quantidade_alvo).rename(columns=renomear)
 tabela["Concentração (%)"] = tabela["Concentração (%)"].round(1)
-st.dataframe(
-    tabela[["Município", "Zona", "Eleitores no filtro", "Total de eleitores na zona", "Concentração (%)"]],
-    hide_index=True,
-    use_container_width=True,
-)
+colunas_tabela = [c for c in renomear.values() if c in tabela.columns]
+st.dataframe(tabela[colunas_tabela], hide_index=True, use_container_width=True)
 
-rotulo_zoom = (
-    "Ver o(s) município(s) inteiro(s), sem destacar as zonas de cima"
-    if municipios_filtro
-    else "Ver estado inteiro, sem zoom nas zonas de cima"
-)
-sem_destaque = st.checkbox(rotulo_zoom)
+sem_destaque = st.checkbox(f"Ver o recorte inteiro, sem destacar os(as) {rotulo_unidade.lower()}s de cima")
 
 setores = carregar_setores()
-locais = carregar_locais_votacao()
-zonas_geometria = _zonas_geometria_cache(setores, locais, tuple(municipios_filtro))
+if nivel == "Bairro":
+    unidade_geometria = _bairros_geometria_cache(setores, carregar_locais_votacao(), municipios_filtro[0])
+    coluna_geo = "bairro"
+else:
+    unidade_geometria = _zonas_geometria_cache(setores, carregar_locais_votacao(), tuple(municipios_filtro))
+    coluna_geo = "zona"
 
 municipios_geometria = None
 if municipios_filtro:
     gdf_municipios = carregar_geodataframe().to_crs(CRS_PROJETADA)
     municipios_geometria = gdf_municipios[gdf_municipios["name"].str.upper().isin(municipios_filtro)]
 
-valores_por_zona = resultado.set_index("zona")[coluna_metrica]
+valores_por_unidade = resultado.set_index("unidade")[coluna_metrica]
 legenda = "Concentração (%)" if coluna_metrica == "percentual" else "Eleitores no filtro"
 fig = montar_mapa_perfil(
-    zonas_geometria,
-    valores_por_zona,
+    unidade_geometria,
+    valores_por_unidade,
     legenda,
-    zonas_alvo=None if sem_destaque else zonas_alvo,
+    zonas_alvo=None if sem_destaque else unidades_alvo,
     municipios_geometria=municipios_geometria,
+    coluna_unidade=coluna_geo,
 )
 st.pyplot(fig, use_container_width=True)

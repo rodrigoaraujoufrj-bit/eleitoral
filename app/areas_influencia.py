@@ -59,15 +59,15 @@ def _paleta_categorica(quantidade: int) -> ListedColormap:
 def calcular_areas_influencia(
     setores: gpd.GeoDataFrame, locais_votacao: gpd.GeoDataFrame
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """Retorna (setores com o local mais próximo, zona e município atribuídos, áreas dissolvidas por zona).
+    """Retorna (setores com o local mais próximo, zona, município e bairro atribuídos, áreas dissolvidas por zona).
 
-    `locais_votacao` precisa ter as colunas "id_local", "zona", "municipio"
-    e "geometry" (pontos). O "município" de um setor é o do local de
-    votação mais próximo (a mesma referência eleitoral usada em toda essa
-    página), não necessariamente o município geográfico do setor: nas
-    poucas zonas que cruzam divisa (ver módulo `perfil_eleitorado`), um
-    setor pode ficar mais perto de um local do município vizinho. Ambos os
-    retornos usam `CRS_PROJETADA`.
+    `locais_votacao` precisa ter as colunas "id_local", "zona", "municipio",
+    "bairro" e "geometry" (pontos). O "município" e o "bairro" de um setor
+    são os do local de votação mais próximo (a mesma referência eleitoral
+    usada em toda essa página), não necessariamente os geográficos do
+    setor: nas poucas zonas que cruzam divisa (ver módulo
+    `perfil_eleitorado`), um setor pode ficar mais perto de um local do
+    município vizinho. Ambos os retornos usam `CRS_PROJETADA`.
     """
     setores = setores.to_crs(CRS_PROJETADA)
     pontos = locais_votacao.to_crs(CRS_PROJETADA)
@@ -76,7 +76,7 @@ def calcular_areas_influencia(
     centroides["geometry"] = centroides.geometry.centroid
 
     juncao = gpd.sjoin_nearest(
-        centroides, pontos[["id_local", "zona", "municipio", "geometry"]], how="left", distance_col="dist_m"
+        centroides, pontos[["id_local", "zona", "municipio", "bairro", "geometry"]], how="left", distance_col="dist_m"
     )
     # Em empate (mesma distância a dois locais), sjoin_nearest devolve as duas
     # linhas; fica só a primeira, escolha arbitrária mas sem efeito visível.
@@ -86,6 +86,7 @@ def calcular_areas_influencia(
     setores["id_local"] = juncao["id_local"].values
     setores["zona"] = juncao["zona"].values
     setores["municipio"] = juncao["municipio"].values
+    setores["bairro"] = juncao["bairro"].values
 
     areas = setores.dissolve(by="zona")
     return setores, areas

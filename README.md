@@ -22,7 +22,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 - **Home**: apresentação do projeto
 - **Pleito Municipal**: vereador e prefeito, quantas vagas no RJ, o que cada cargo faz, mapa por município e área de influência de cada zona eleitoral
 - **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente, quantas vagas no RJ e o que cada cargo faz
-- **Análise do Eleitorado**: perfil do eleitorado por zona (gênero, faixa etária, escolaridade, raça/cor), com filtros combináveis e mapa que dá zoom nas zonas onde o perfil filtrado é mais forte
+- **Análise do Eleitorado**: perfil do eleitorado por zona (gênero, faixa etária, escolaridade, raça/cor), com recorte opcional por município e mapa que dá zoom nas zonas onde o perfil filtrado é mais forte
 
 ## Stack
 
@@ -208,15 +208,23 @@ o estado, e sem nenhum filtro aplicado cada zona soma exatamente 100% do
 seu próprio eleitorado (garantindo que a agregação não perde nem duplica
 ninguém).
 
-A página **Análise do Eleitorado > Perfil por Zona** usa isso: o usuário
-combina filtros de gênero, faixa etária, escolaridade e raça/cor
+A página **Análise do Eleitorado > Perfil por Zona** usa isso em duas
+etapas. Primeiro "Onde": um recorte opcional de um ou mais municípios,
+porque um candidato a vereador ou prefeito só disputa no próprio
+município, não faz sentido misturar com área de fora. Depois "Quem": os
+filtros de gênero, faixa etária, escolaridade e raça/cor
 (`app/perfil_eleitorado.py` calcula, por zona, quantos eleitores passam no
-filtro e qual fração é da zona toda), escolhe se quer ordenar pelo número
-absoluto ou pelo percentual de concentração, e o mapa
+filtro e qual fração é do recorte todo). O usuário escolhe ordenar pelo
+número absoluto ou pelo percentual de concentração, e o mapa
 (`app/mapa_perfil_eleitorado.py`) dá zoom automaticamente nas zonas de
-maior valor, com a borda destacada em âmbar. Uma zona pode abranger mais
-de um município (18 das 165 no RJ); nesses casos a tabela mostra os nomes
-separados por "/", do que tem mais eleitores na zona para o que tem menos.
+maior valor dentro do recorte, com a borda destacada em âmbar.
+
+Uma zona pode abranger mais de um município (18 das 165 no RJ). Sem
+recorte, a tabela mostra os nomes separados por "/", do que tem mais
+eleitores na zona para o que tem menos. Com um município selecionado, o
+recorte já ignora eleitores de fora dele nessa zona (tanto no total quanto
+no mapa, que mostra só a fatia de setores censitários cujo local de
+votação mais próximo é desse município, não a zona inteira).
 
 É composição demográfica do eleitorado registrado (dado real do TSE), não
 dado de comportamento, consumo ou intenção de voto, e a página deixa isso

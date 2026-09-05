@@ -71,15 +71,26 @@ def eleitores_por_zona(
     faixas_etarias: list[str],
     escolaridades: list[str],
     racas_cor: list[str],
+    municipios: list[str] | None = None,
 ) -> pd.DataFrame:
     """Eleitores que passam no filtro e total da zona, por zona.
 
-    Devolve todas as 165 zonas, mesmo as com zero eleitores no filtro. Uma
+    Devolve uma linha por zona com eleitorado no recorte pedido (todas as
+    165 do RJ sem `municipios`, mesmo as com zero eleitores no filtro). Uma
     zona pode abranger mais de um município (183 combinações de município
     e zona para 165 zonas no RJ); nesse caso "municipio" traz os nomes
     separados por "/", do que tem mais eleitores na zona para o que tem
-    menos.
+    menos, a não ser que `municipios` já restrinja a um só.
+
+    `municipios`, se passado (nomes em maiúsculas, como em
+    `perfil["municipio"]`), restringe TUDO a esses municípios antes de
+    somar: um candidato a vereador só disputa no próprio município, então
+    nem o total da zona nem o percentual devem contar eleitores de outro
+    município que a mesma zona abranja.
     """
+    if municipios:
+        perfil = perfil[perfil["municipio"].isin(municipios)]
+
     totais = perfil.groupby("zona", as_index=False)["eleitores"].sum().rename(columns={"eleitores": "eleitores_zona"})
     municipios_por_zona = (
         perfil.groupby(["zona", "municipio"], as_index=False)["eleitores"]

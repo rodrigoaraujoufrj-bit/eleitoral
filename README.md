@@ -21,7 +21,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 
 - **Home**: apresentação do projeto
 - **Pleito Municipal**: vereador e prefeito, quantas vagas no RJ, o que cada cargo faz, mapa por município e área de influência de cada zona eleitoral
-- **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente, quantas vagas no RJ e o que cada cargo faz
+- **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente, quantas vagas no RJ, o que cada cargo faz e mapa do eleitorado real por município
 - **Análise do Eleitorado**: perfil do eleitorado por zona ou, dentro de 1 município, por bairro (gênero, faixa etária, escolaridade, raça/cor), com recorte opcional por município e mapa que dá zoom onde o perfil filtrado é mais forte
 
 ## Stack
@@ -312,9 +312,9 @@ Os locais de votação vieram assim: outra sessão do Claude Code, rodando local
 - [x] Tratar `perfil_secao` e gerar agregado por zona em `data/processed/`
 - [x] Página de perfil do eleitorado por zona, com filtros combináveis e mapa com zoom automático
 - [x] Recorte espacial por município, e perfil do eleitorado por bairro dentro de 1 município
+- [x] Mapa para o Pleito Estadual e Federal (eleitorado real por município, já que esses cargos não têm vaga municipal)
 - [ ] Tratar `perfil_deficiencia` e gerar agregado em `data/processed/`
 - [ ] Pontos de interesse (transporte público, comércio) via OpenStreetMap, quando achar uma fonte acessível
 - [ ] Renda por setor censitário (IBGE), para cruzar com o perfil do eleitorado
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
-- [ ] Mapas para o Pleito Estadual e Federal
 - [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

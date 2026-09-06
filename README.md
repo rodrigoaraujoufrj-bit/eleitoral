@@ -245,6 +245,22 @@ seu local de votação mais próximo.
 dado de comportamento, consumo ou intenção de voto, e a página deixa isso
 explícito para quem for usar a ferramenta.
 
+Com exatamente 1 município selecionado, a página também responde "quantos
+votos um vereador precisa": divide o eleitorado do município (real, de
+`locais_votacao.py`) pelas vagas de vereador dele (`municipios_rj.py`,
+Art. 29 IV da Constituição), o quociente eleitoral aproximado. É referência
+de teto (quem tira essa votação garante vaga sozinho), não piso: o sistema
+proporcional também depende do desempenho do partido/coligação, então boa
+parte dos vereadores eleitos historicamente vota menos que isso, só que
+sem dado de eleição passada (fora do escopo deste projeto) não dá pra
+estimar esse número menor.
+
+Uma terceira métrica, junto com total e concentração, é **densidade**
+(eleitores do filtro por km², área da própria zona ou bairro): uma
+referência geográfica de onde uma campanha de porta em porta rende mais
+gente por área percorrida, não um dado real de custo de campanha (que
+este projeto não tem e não fabrica).
+
 ## Pontos de interesse (transporte, comércio) via OpenStreetMap
 
 Investigado como possível camada adicional (transporte público, shopping
@@ -313,6 +329,7 @@ Os locais de votação vieram assim: outra sessão do Claude Code, rodando local
 - [x] Página de perfil do eleitorado por zona, com filtros combináveis e mapa com zoom automático
 - [x] Recorte espacial por município, e perfil do eleitorado por bairro dentro de 1 município
 - [x] Mapa para o Pleito Estadual e Federal (eleitorado real por município, já que esses cargos não têm vaga municipal)
+- [x] Quociente eleitoral aproximado (votos que garantem vaga de vereador) e densidade (eleitores por km²) na Análise do Eleitorado
 - [ ] Tratar `perfil_deficiencia` e gerar agregado em `data/processed/`
 - [ ] Pontos de interesse (transporte público, comércio) via OpenStreetMap, quando achar uma fonte acessível
 - [ ] Renda por setor censitário (IBGE), para cruzar com o perfil do eleitorado

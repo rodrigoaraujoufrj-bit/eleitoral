@@ -1,5 +1,6 @@
 import streamlit as st
 
+from components import formatar_numero
 from locais_votacao import carregar_locais_votacao, locais_votacao_disponivel
 from mapa_municipal import carregar_geodataframe
 from mapa_perfil_eleitorado import (
@@ -79,6 +80,26 @@ else:
     )
 rotulo_unidade = "Bairro" if nivel == "Bairro" else "Zona"
 
+if len(municipios_filtro) == 1:
+    dados_municipio = next(m for m in MUNICIPIOS_RJ if m["municipio"].upper() == municipios_filtro[0])
+    locais_municipio = carregar_locais_votacao()
+    eleitorado_municipio = locais_municipio.loc[
+        locais_municipio["municipio"] == municipios_filtro[0], "eleitores"
+    ].sum()
+    vagas_vereador = dados_municipio["vereadores"]
+    quociente = eleitorado_municipio / vagas_vereador
+    st.info(
+        f"**Quantos votos um vereador precisa em {dados_municipio['municipio']}?** O município "
+        f"tem {vagas_vereador} vagas de vereador e {formatar_numero(eleitorado_municipio, 0)} "
+        f"eleitores; dividindo os dois dá **{formatar_numero(quociente, 0)} votos** (o quociente "
+        "eleitoral aproximado). Um candidato com essa votação praticamente garante uma vaga "
+        "sozinho. Na prática, o sistema proporcional também depende do desempenho do "
+        "partido/coligação inteiro, então boa parte dos vereadores eleitos historicamente tem "
+        "votação abaixo disso; sem dado de eleição passada (fora do escopo deste projeto), não "
+        "dá pra estimar esse número menor com precisão. Trate como teto de referência, não como "
+        "meta mínima."
+    )
+
 st.subheader("Quem")
 coluna_a, coluna_b = st.columns(2)
 with coluna_a:
@@ -106,20 +127,37 @@ if resultado.empty:
     st.warning(f"Nenhum(a) {rotulo_unidade.lower()} encontrado(a) para esse recorte.")
     st.stop()
 
+setores = carregar_setores()
+if nivel == "Bairro":
+    unidade_geometria = _bairros_geometria_cache(setores, carregar_locais_votacao(), municipios_filtro[0])
+    coluna_geo = "bairro"
+else:
+    unidade_geometria = _zonas_geometria_cache(setores, carregar_locais_votacao(), tuple(municipios_filtro))
+    coluna_geo = "zona"
+
+area_km2_por_unidade = (unidade_geometria.geometry.area / 1_000_000).set_axis(unidade_geometria[coluna_geo])
+resultado["area_km2"] = resultado["unidade"].map(area_km2_por_unidade)
+resultado["densidade"] = resultado["eleitores_filtro"] / resultado["area_km2"]
+
 st.subheader(f"{'Bairros' if nivel == 'Bairro' else 'Zonas'} onde esse perfil é mais forte")
 metrica = st.radio(
     f"Ordenar {rotulo_unidade.lower()}s por",
-    options=["Total de eleitores (número)", "Concentração na zona (%)"],
+    options=["Total de eleitores (número)", "Concentração na zona (%)", "Densidade (eleitores por km²)"],
     horizontal=True,
 )
 st.caption(
     "Total: quantos eleitores do recorte passam no filtro, em número absoluto. Concentração: "
     "desses eleitores, qual fração é do recorte todo, útil para achar onde um perfil é raro no "
-    "resto mas forte ali. Sem nenhum filtro de gênero/faixa/escolaridade/raça restrito, "
-    "concentração é sempre 100%. Com município selecionado, os dois já ignoram eleitores de "
-    "fora dele."
+    "resto mas forte ali. Densidade: eleitores do filtro por km², uma referência de onde a "
+    "campanha de rua rende mais por área percorrida (não é dado de custo real, que este projeto "
+    "não tem). Sem nenhum filtro de gênero/faixa/escolaridade/raça restrito, concentração é "
+    "sempre 100%. Com município selecionado, todas já ignoram eleitores de fora dele."
 )
-coluna_metrica = "percentual" if metrica.startswith("Concentração") else "eleitores_filtro"
+coluna_metrica = {
+    "Total de eleitores (número)": "eleitores_filtro",
+    "Concentração na zona (%)": "percentual",
+    "Densidade (eleitores por km²)": "densidade",
+}[metrica]
 
 teto = min(30, len(resultado))
 piso = min(3, teto)
@@ -136,21 +174,15 @@ renomear = {
     "eleitores_filtro": "Eleitores no filtro",
     "eleitores_total": f"Total de eleitores no(a) {rotulo_unidade.lower()}",
     "percentual": "Concentração (%)",
+    "densidade": "Densidade (eleitores/km²)",
 }
 tabela = ordenado.head(quantidade_alvo).rename(columns=renomear)
 tabela["Concentração (%)"] = tabela["Concentração (%)"].round(1)
+tabela["Densidade (eleitores/km²)"] = tabela["Densidade (eleitores/km²)"].round(0)
 colunas_tabela = [c for c in renomear.values() if c in tabela.columns]
 st.dataframe(tabela[colunas_tabela], hide_index=True, use_container_width=True)
 
 sem_destaque = st.checkbox(f"Ver o recorte inteiro, sem destacar os(as) {rotulo_unidade.lower()}s de cima")
-
-setores = carregar_setores()
-if nivel == "Bairro":
-    unidade_geometria = _bairros_geometria_cache(setores, carregar_locais_votacao(), municipios_filtro[0])
-    coluna_geo = "bairro"
-else:
-    unidade_geometria = _zonas_geometria_cache(setores, carregar_locais_votacao(), tuple(municipios_filtro))
-    coluna_geo = "zona"
 
 municipios_geometria = None
 if municipios_filtro:
@@ -158,7 +190,11 @@ if municipios_filtro:
     municipios_geometria = gdf_municipios[gdf_municipios["name"].str.upper().isin(municipios_filtro)]
 
 valores_por_unidade = resultado.set_index("unidade")[coluna_metrica]
-legenda = "Concentração (%)" if coluna_metrica == "percentual" else "Eleitores no filtro"
+legenda = {
+    "eleitores_filtro": "Eleitores no filtro",
+    "percentual": "Concentração (%)",
+    "densidade": "Eleitores no filtro por km²",
+}[coluna_metrica]
 fig = montar_mapa_perfil(
     unidade_geometria,
     valores_por_unidade,

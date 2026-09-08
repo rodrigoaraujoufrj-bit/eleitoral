@@ -82,3 +82,41 @@ def votos_por_zona(votacao: pd.DataFrame, sq_candidato: str, municipios: list[st
     total = por_zona["votos"].sum()
     por_zona["percentual"] = (por_zona["votos"] / total * 100) if total else 0
     return por_zona.sort_values("votos", ascending=False)
+
+
+def dominancia_por_zona(
+    votacao: pd.DataFrame, cargo: str, turno: str, municipios: list[str] | None = None, top_n: int = 8
+) -> pd.DataFrame:
+    """Pra cada zona, o candidato mais votado ali (dominância real, olhando
+    todo mundo que concorreu, não só quem foi filtrado na tela).
+
+    Só os `top_n` que mais "ganham" zona viram categoria própria; o resto
+    entra em "Outros", porque um cargo como deputado (mais de mil
+    candidatos no RJ) deixaria a legenda do mapa ilegível sem agrupar.
+    Retorna uma linha por zona, com `zona`, `candidato` (quem venceu de
+    fato) e `categoria` (igual a `candidato`, exceto quando ele caiu no
+    agrupamento "Outros").
+    """
+    filtro = votacao[(votacao["cargo"] == cargo) & (votacao["turno"] == turno)]
+    if municipios:
+        filtro = filtro[filtro["municipio"].isin(municipios)]
+    por_candidato_zona = filtro.groupby(["zona", "sq_candidato", "candidato"], as_index=False)["votos"].sum()
+    indice_vencedor = por_candidato_zona.groupby("zona")["votos"].idxmax()
+    vencedor = por_candidato_zona.loc[indice_vencedor].reset_index(drop=True)
+
+    mais_frequentes = vencedor["candidato"].value_counts().head(top_n).index
+    vencedor["categoria"] = vencedor["candidato"].where(vencedor["candidato"].isin(mais_frequentes), "Outros")
+    return vencedor
+
+
+def comparar_candidatos_por_zona(
+    votacao: pd.DataFrame, sq_candidato_a: str, sq_candidato_b: str, municipios: list[str] | None = None
+) -> pd.DataFrame:
+    """Votos dos dois candidatos em cada zona, lado a lado, com a vantagem
+    de A sobre B em pontos percentuais (negativa quando B vence ali)."""
+    votos_a = votos_por_zona(votacao, sq_candidato_a, municipios).set_index("zona")["votos"]
+    votos_b = votos_por_zona(votacao, sq_candidato_b, municipios).set_index("zona")["votos"]
+    combinado = pd.concat([votos_a.rename("votos_a"), votos_b.rename("votos_b")], axis=1).fillna(0).reset_index()
+    total = combinado["votos_a"] + combinado["votos_b"]
+    combinado["vantagem_pct"] = ((combinado["votos_a"] - combinado["votos_b"]) / total.where(total > 0) * 100).fillna(0)
+    return combinado

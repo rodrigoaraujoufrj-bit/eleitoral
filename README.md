@@ -57,6 +57,7 @@ eleitoral/
 │   ├── perfil_eleitorado_bairro.py # o mesmo, por bairro, dentro de 1 município
 │   ├── mapa_perfil_eleitorado.py # mapa coroplético por zona ou bairro, com zoom no filtrado
 │   ├── resultados_eleitorais.py  # votação real por candidato (curral eleitoral)
+│   ├── mapa_curral_eleitoral.py  # mapa de dominância (categórico) e de comparação (divergente)
 │   ├── diagrama_poderes.py       # diagrama Executivo x Legislativo e órgãos subordinados
 │   ├── geo/
 │   │   ├── rj_municipios.geojson          # contorno dos 92 municípios (fonte: GitHub, tbrugz/geodata-br)
@@ -349,11 +350,30 @@ A página **Análise do Eleitorado > Curral Eleitoral** escolhe primeiro um
   candidatos cada um no RJ; por padrão a lista mostra só quem se elegeu,
   com uma caixa pra revelar todo mundo.
 
-Depois de escolher o candidato, a página mostra o total de votos dele, a
-situação (eleito por quociente partidário, por média, não eleito etc.),
-quanto dos votos vêm das 3 zonas mais fortes (o indicador de "quão forte
-é o curral") e o mapa, reaproveitando a mesma geometria de zona da página
-de Perfil por Zona.
+Depois de escolher o cargo e o recorte, a página oferece 3 jeitos de olhar
+pro mesmo dado (`app/mapa_curral_eleitoral.py`), todos reaproveitando a
+mesma geometria de zona da página de Perfil por Zona:
+
+- **Um candidato**: o fluxo original. Mostra o total de votos dele, a
+  situação (eleito por quociente partidário, por média, não eleito etc.) e
+  quanto vem das 3 zonas mais fortes (o indicador de "quão forte é o
+  curral"). O mapa colore por votos absolutos ou por **densidade** (votos
+  por km², opção nova): densidade evita que uma zona rural grande pareça
+  "mais forte" só por ter mais área, é votos por km² mesmo, não voto
+  total.
+- **Quem venceu em cada zona**: mapa de dominância, cor categórica em vez
+  de gradiente. Olha todo mundo que concorreu (não só quem passou num
+  filtro), e mostra o candidato mais votado em cada zona. Como um cargo
+  proporcional (deputado) pode ter mais de mil candidatos, só os que mais
+  "vencem" zona ganham cor própria (até 8); o resto entra em "Outros"
+  (cinza), senão a legenda vira ilegível. A tabela de apoio (zonas
+  vencidas por candidato) não tem esse limite, lista todo mundo que
+  venceu ao menos 1 zona.
+- **Comparar 2 candidatos**: mapa divergente (roxo de um lado, âmbar do
+  outro, neutro no empate técnico), pela vantagem em pontos percentuais
+  de A sobre B em cada zona. Bom pra rivalidade direta (ex.: Castro x
+  Freixo no governo de 2022, ainda que Castro tenha vencido só no 1º
+  turno).
 
 **Cobertura de hoje**: vereador e prefeito (2024, com os dois turnos) e
 governador, senador, deputado estadual e deputado federal (2022, só 1º
@@ -455,6 +475,7 @@ continua necessária só para as fontes que seguem inacessíveis, como o OSM.
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [x] Curral eleitoral: votação real por candidato, município e zona (vereador e prefeito, 2024)
 - [x] Curral eleitoral pra governador, senador, deputado estadual e deputado federal (2022)
+- [x] 3 jeitos de visualizar o curral eleitoral no mapa: 1 candidato (votos ou densidade), dominância por zona e comparação entre 2 candidatos
 - [ ] Curral eleitoral pra presidente (falta achar o arquivo nacional "BR" do TSE, ver "Curral eleitoral" acima)
 - [ ] Curral eleitoral no nível de seção/bairro, se um dia buscarmos "Votação por seção eleitoral" do TSE
 - [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

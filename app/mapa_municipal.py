@@ -10,6 +10,11 @@ GEOJSON_PATH = Path(__file__).resolve().parent / "geo" / "rj_municipios.geojson"
 # combinar visualmente com o resto do site.
 CORES_MAPA = LinearSegmentedColormap.from_list("eleitoral", ["#F1ECF6", "#C9A6D9", "#8A5FA8", "#2C2140"])
 
+# Divergente, pra comparar 2 candidatos (âmbar de um lado, roxo do outro,
+# neutro no meio): mesma família de cor da identidade visual, nada de
+# vermelho/verde/azul saturado.
+CORES_DIVERGENTE = LinearSegmentedColormap.from_list("eleitoral_divergente", ["#C9922E", "#F1ECF6", "#8A5FA8"])
+
 
 def carregar_geodataframe() -> gpd.GeoDataFrame:
     return gpd.read_file(GEOJSON_PATH)

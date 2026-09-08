@@ -68,6 +68,9 @@ def montar_mapa_perfil(
     zonas_alvo: list[str] | None = None,
     municipios_geometria: gpd.GeoDataFrame | None = None,
     coluna_unidade: str = "zona",
+    cmap=None,
+    vmin: float | None = None,
+    vmax: float | None = None,
 ):
     """Mapa coroplético por zona (ou por bairro, com `coluna_unidade="bairro"`).
 
@@ -76,7 +79,10 @@ def montar_mapa_perfil(
     `zonas_alvo` (nomes de zona ou de bairro, conforme `coluna_unidade`)
     desenha a borda em âmbar nessas unidades e tem prioridade sobre
     `municipios_geometria` para o enquadramento, se as duas forem passadas
-    juntas.
+    juntas. `cmap`/`vmin`/`vmax` são opcionais: por padrão usa a paleta
+    sequencial roxa do app (`CORES_MAPA`) com a faixa de valor automática;
+    passe uma paleta divergente (ex.: `CORES_DIVERGENTE`, de mapa_municipal.py)
+    com `vmin`/`vmax` simétricos pra comparar dois candidatos.
     """
     municipios = municipios_geometria if municipios_geometria is not None else carregar_geodataframe().to_crs(CRS_PROJETADA)
     zonas = zonas_geometria.copy()
@@ -87,7 +93,9 @@ def montar_mapa_perfil(
     zonas.plot(
         ax=ax,
         column="valor",
-        cmap=CORES_MAPA,
+        cmap=cmap or CORES_MAPA,
+        vmin=vmin,
+        vmax=vmax,
         linewidth=0.3,
         edgecolor="#FAF8FB",
         legend=True,

@@ -1,12 +1,15 @@
 import streamlit as st
 
 from locais_votacao import carregar_locais_votacao, locais_votacao_disponivel
+from mapa_curral_eleitoral import montar_mapa_comparacao, montar_mapa_dominancia
 from mapa_municipal import carregar_geodataframe
 from mapa_perfil_eleitorado import CRS_PROJETADA, carregar_zonas_geometria, montar_mapa_perfil
 from municipios_rj import MUNICIPIOS_RJ
 from resultados_eleitorais import (
     candidatos,
     carregar_votacao,
+    comparar_candidatos_por_zona,
+    dominancia_por_zona,
     resultados_disponivel,
     turnos_disponiveis,
     votos_por_zona,
@@ -41,6 +44,34 @@ def _zonas_geometria_cache(_setores, _locais_votacao, municipios: tuple[str, ...
     return carregar_zonas_geometria(_setores, _locais_votacao, municipios=list(municipios) or None)
 
 
+def _slider_quantidade(rotulo: str, total: int, teto_padrao: int, valor_padrao: int) -> int:
+    """Slider "quantas unidades destacar", só quando há de fato o que escolher.
+
+    `st.slider` quebra se min_value == max_value (recorte pequeno, tipo um
+    candidato com voto em só 1 ou 2 zonas): nesse caso mostra tudo, sem
+    controle nenhum.
+    """
+    teto = min(teto_padrao, total)
+    piso = min(3, teto)
+    if teto > piso:
+        return st.slider(rotulo, min_value=piso, max_value=teto, value=min(valor_padrao, teto))
+    return teto
+
+
+def _selectbox_candidato(lista_candidatos, rotulo: str, excluir_sq: str | None = None):
+    candidatos_disponiveis = lista_candidatos if excluir_sq is None else lista_candidatos[
+        lista_candidatos["sq_candidato"] != excluir_sq
+    ]
+    opcoes = {
+        f"{linha.candidato} ({linha.partido}), {linha.votos:,} votos, {linha.situacao.lower()}".replace(",", "."): (
+            linha.sq_candidato
+        )
+        for linha in candidatos_disponiveis.itertuples()
+    }
+    escolha = st.selectbox(rotulo, options=list(opcoes.keys()))
+    return opcoes[escolha]
+
+
 st.title("Curral Eleitoral")
 st.caption(
     "Onde um candidato específico teve força de verdade, voto real divulgado pelo TSE. "
@@ -65,7 +96,7 @@ if not resultados_disponivel(ano):
 
 votacao = _votacao_cache(ano)
 
-st.subheader("Onde e quem")
+st.subheader("Onde")
 if info_cargo["municipal"]:
     municipio_escolhido = st.selectbox("Município", options=NOMES_MUNICIPIOS)
     municipios_filtro = [municipio_escolhido.upper()]
@@ -89,75 +120,163 @@ turno_escolhido = (
     else turnos[0]
 )
 
-apenas_eleitos = st.checkbox(
-    "Mostrar só quem foi eleito", value=cargo_escolhido in CARGOS_MUITOS_CANDIDATOS
-)
-lista_candidatos = candidatos(
-    votacao, cargo_escolhido, turno_escolhido, municipios=municipios_filtro or None, apenas_eleitos=apenas_eleitos
-)
-if lista_candidatos.empty:
-    st.warning("Nenhum candidato encontrado para esse recorte.")
-    st.stop()
-
-opcoes_candidato = {
-    f"{linha.candidato} ({linha.partido}), {linha.votos:,} votos, {linha.situacao.lower()}".replace(",", "."): (
-        linha.sq_candidato
-    )
-    for linha in lista_candidatos.itertuples()
-}
-escolha = st.selectbox(f"Candidato a {cargo_escolhido.lower()}", options=list(opcoes_candidato.keys()))
-sq_escolhido = opcoes_candidato[escolha]
-
-st.subheader("Onde estão os votos dele(a)")
-por_zona = votos_por_zona(votacao, sq_escolhido, municipios=municipios_filtro or None)
-total_votos = int(por_zona["votos"].sum())
-concentracao_top3 = round(por_zona.head(3)["percentual"].sum(), 1)
-
 recorte_ativo = bool(municipios_filtro) and not info_cargo["municipal"]
-rotulo_total = "Total de votos no recorte" if recorte_ativo else "Total de votos"
-
-coluna_a, coluna_b = st.columns(2)
-coluna_a.metric(rotulo_total, f"{total_votos:,}".replace(",", "."))
-coluna_b.metric("Concentração nas 3 zonas mais fortes", f"{concentracao_top3}%")
-texto_concentracao = (
-    "Quanto maior essa concentração, mais o candidato depende de poucas zonas específicas "
-    "(um curral eleitoral mais forte); quanto mais baixa, mais espalhado é o voto dele pelo "
-    "recorte escolhido."
-)
-if recorte_ativo:
-    texto_concentracao += " Com município selecionado, os dois números acima já valem só pra ele, não pro RJ inteiro."
-st.caption(texto_concentracao)
-
-teto = min(15, len(por_zona))
-piso = min(3, teto)
-if teto > piso:
-    quantidade_alvo = st.slider("Quantas zonas destacar", min_value=piso, max_value=teto, value=min(5, teto))
-else:
-    # Poucas zonas no total (candidato com votos em 1 ou 2 zonas só): nada
-    # pra escolher, mostra todas sem controle deslizante.
-    quantidade_alvo = teto
-zonas_alvo = por_zona.head(quantidade_alvo)["zona"].tolist()
-
-tabela = por_zona.rename(columns={"zona": "Zona", "votos": "Votos", "percentual": "% do total do candidato"})
-tabela["% do total do candidato"] = tabela["% do total do candidato"].round(1)
-st.dataframe(tabela, hide_index=True, use_container_width=True)
 
 setores = carregar_setores()
 locais = carregar_locais_votacao()
 zona_geometria = _zonas_geometria_cache(setores, locais, tuple(municipios_filtro))
+area_km2_por_zona = (zona_geometria.geometry.area / 1_000_000).set_axis(zona_geometria["zona"])
 
 municipio_geometria = None
 if municipios_filtro:
     gdf_municipios = carregar_geodataframe().to_crs(CRS_PROJETADA)
     municipio_geometria = gdf_municipios[gdf_municipios["name"].str.upper().isin(municipios_filtro)]
 
-valores_por_zona = por_zona.set_index("zona")["votos"]
-fig = montar_mapa_perfil(
-    zona_geometria,
-    valores_por_zona,
-    "Votos",
-    zonas_alvo=zonas_alvo,
-    municipios_geometria=municipio_geometria,
-    coluna_unidade="zona",
+st.subheader("Visualização")
+visualizacao = st.radio(
+    "Visualização",
+    options=["Um candidato", "Quem venceu em cada zona", "Comparar 2 candidatos"],
+    horizontal=True,
 )
-st.pyplot(fig, use_container_width=True)
+
+if visualizacao == "Um candidato":
+    apenas_eleitos = st.checkbox("Mostrar só quem foi eleito", value=cargo_escolhido in CARGOS_MUITOS_CANDIDATOS)
+    lista_candidatos = candidatos(
+        votacao, cargo_escolhido, turno_escolhido, municipios=municipios_filtro or None, apenas_eleitos=apenas_eleitos
+    )
+    if lista_candidatos.empty:
+        st.warning("Nenhum candidato encontrado para esse recorte.")
+        st.stop()
+    sq_escolhido = _selectbox_candidato(lista_candidatos, f"Candidato a {cargo_escolhido.lower()}")
+
+    st.subheader("Onde estão os votos dele(a)")
+    por_zona = votos_por_zona(votacao, sq_escolhido, municipios=municipios_filtro or None)
+    por_zona["area_km2"] = por_zona["zona"].map(area_km2_por_zona)
+    por_zona["densidade"] = por_zona["votos"] / por_zona["area_km2"]
+    total_votos = int(por_zona["votos"].sum())
+    concentracao_top3 = round(por_zona.head(3)["percentual"].sum(), 1)
+
+    rotulo_total = "Total de votos no recorte" if recorte_ativo else "Total de votos"
+    coluna_a, coluna_b = st.columns(2)
+    coluna_a.metric(rotulo_total, f"{total_votos:,}".replace(",", "."))
+    coluna_b.metric("Concentração nas 3 zonas mais fortes", f"{concentracao_top3}%")
+    texto_concentracao = (
+        "Quanto maior essa concentração, mais o candidato depende de poucas zonas específicas "
+        "(um curral eleitoral mais forte); quanto mais baixa, mais espalhado é o voto dele pelo "
+        "recorte escolhido."
+    )
+    if recorte_ativo:
+        texto_concentracao += " Com município selecionado, os dois números acima já valem só pra ele, não pro RJ inteiro."
+    st.caption(texto_concentracao)
+
+    metrica = st.radio(
+        "Colorir o mapa por",
+        options=["Votos absolutos", "Densidade (votos por km²)"],
+        horizontal=True,
+        help="Densidade evita que uma zona rural grande pareça 'mais forte' só por ter mais área; "
+        "mostra votos por km², não votos totais.",
+    )
+    coluna_metrica, legenda_mapa = (
+        ("votos", "Votos") if metrica == "Votos absolutos" else ("densidade", "Votos por km²")
+    )
+
+    quantidade_alvo = _slider_quantidade("Quantas zonas destacar", len(por_zona), teto_padrao=15, valor_padrao=5)
+    zonas_alvo = por_zona.sort_values(coluna_metrica, ascending=False).head(quantidade_alvo)["zona"].tolist()
+
+    tabela = por_zona.rename(
+        columns={
+            "zona": "Zona",
+            "votos": "Votos",
+            "percentual": "% do total do candidato",
+            "densidade": "Votos por km²",
+        }
+    )
+    tabela["% do total do candidato"] = tabela["% do total do candidato"].round(1)
+    tabela["Votos por km²"] = tabela["Votos por km²"].round(1)
+    st.dataframe(
+        tabela[["Zona", "Votos", "% do total do candidato", "Votos por km²"]], hide_index=True, use_container_width=True
+    )
+
+    valores_por_zona = por_zona.set_index("zona")[coluna_metrica]
+    fig = montar_mapa_perfil(
+        zona_geometria,
+        valores_por_zona,
+        legenda_mapa,
+        zonas_alvo=zonas_alvo,
+        municipios_geometria=municipio_geometria,
+        coluna_unidade="zona",
+    )
+    st.pyplot(fig, use_container_width=True)
+
+elif visualizacao == "Quem venceu em cada zona":
+    st.subheader("Quem foi o(a) mais votado(a) em cada zona")
+    st.caption(
+        "Dominância real: olha todo mundo que concorreu, não só um recorte. Os candidatos que "
+        "mais vencem zonas ganham cor própria; o resto entra em \"Outros\" (cinza), senão a "
+        "legenda vira uma sopa de cores num cargo com muitos candidatos."
+    )
+    dominancia = dominancia_por_zona(votacao, cargo_escolhido, turno_escolhido, municipios=municipios_filtro or None)
+
+    ranking = (
+        dominancia.groupby("candidato", as_index=False)
+        .agg(zonas_vencidas=("zona", "count"))
+        .sort_values("zonas_vencidas", ascending=False)
+        .rename(columns={"candidato": "Candidato(a)", "zonas_vencidas": "Zonas vencidas"})
+    )
+    st.dataframe(ranking, hide_index=True, use_container_width=True)
+
+    fig = montar_mapa_dominancia(
+        zona_geometria, dominancia, municipios_geometria=municipio_geometria, coluna_unidade="zona"
+    )
+    st.pyplot(fig, use_container_width=True)
+
+else:
+    apenas_eleitos = st.checkbox("Mostrar só quem foi eleito", value=cargo_escolhido in CARGOS_MUITOS_CANDIDATOS)
+    lista_candidatos = candidatos(
+        votacao, cargo_escolhido, turno_escolhido, municipios=municipios_filtro or None, apenas_eleitos=apenas_eleitos
+    )
+    if len(lista_candidatos) < 2:
+        st.warning("Esse recorte não tem 2 candidatos pra comparar.")
+        st.stop()
+
+    coluna_a, coluna_b = st.columns(2)
+    with coluna_a:
+        sq_a = _selectbox_candidato(lista_candidatos, "Candidato(a) A")
+    with coluna_b:
+        sq_b = _selectbox_candidato(lista_candidatos, "Candidato(a) B", excluir_sq=sq_a)
+
+    comparacao = comparar_candidatos_por_zona(votacao, sq_a, sq_b, municipios=municipios_filtro or None)
+    nome_a = lista_candidatos.loc[lista_candidatos["sq_candidato"] == sq_a, "candidato"].iloc[0]
+    nome_b = lista_candidatos.loc[lista_candidatos["sq_candidato"] == sq_b, "candidato"].iloc[0]
+
+    st.subheader(f"{nome_a} x {nome_b}, zona a zona")
+    coluna_a, coluna_b = st.columns(2)
+    coluna_a.metric(f"Zonas onde {nome_a} vence", int((comparacao["vantagem_pct"] > 0).sum()))
+    coluna_b.metric(f"Zonas onde {nome_b} vence", int((comparacao["vantagem_pct"] < 0).sum()))
+    st.caption(
+        "Vantagem em pontos percentuais dos votos dos dois candidatos somados em cada zona: "
+        "positivo é vantagem do A (roxo no mapa), negativo é vantagem do B (âmbar)."
+    )
+
+    comparacao_ordenada = comparacao.reindex(comparacao["vantagem_pct"].abs().sort_values(ascending=False).index)
+    quantidade_alvo = _slider_quantidade(
+        "Quantas zonas mais disputadas destacar", len(comparacao_ordenada), teto_padrao=15, valor_padrao=5
+    )
+    zonas_alvo = comparacao_ordenada.head(quantidade_alvo)["zona"].tolist()
+
+    tabela = comparacao_ordenada.rename(
+        columns={"zona": "Zona", "votos_a": f"Votos de {nome_a}", "votos_b": f"Votos de {nome_b}", "vantagem_pct": "Vantagem (p.p.)"}
+    )
+    tabela["Vantagem (p.p.)"] = tabela["Vantagem (p.p.)"].round(1)
+    st.dataframe(tabela, hide_index=True, use_container_width=True)
+
+    vantagem_por_zona = comparacao.set_index("zona")["vantagem_pct"]
+    fig = montar_mapa_comparacao(
+        zona_geometria,
+        vantagem_por_zona,
+        f"Vantagem de {nome_a} (roxo) x {nome_b} (âmbar), em p.p.",
+        zonas_alvo=zonas_alvo,
+        municipios_geometria=municipio_geometria,
+        coluna_unidade="zona",
+    )
+    st.pyplot(fig, use_container_width=True)

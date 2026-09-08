@@ -40,7 +40,7 @@ CORES = {
 }
 
 
-def _paleta_categorica(quantidade: int) -> ListedColormap:
+def paleta_categorica(quantidade: int) -> ListedColormap:
     """Uma cor distinta por zona, sem sair da família roxo/magenta/âmbar do app.
 
     Evita vermelho, verde e azul saturados de propósito (mesmo motivo da
@@ -127,7 +127,7 @@ def montar_mapa_areas_influencia(setores: gpd.GeoDataFrame, locais_votacao, reco
     municipios.plot(
         ax=ax, facecolor=CORES["fundo_municipio"], edgecolor=CORES["borda_municipio"], linewidth=largura_borda_municipio
     )
-    areas.plot(ax=ax, column="zona", cmap=_paleta_categorica(len(areas)), categorical=True, linewidth=0, alpha=0.9)
+    areas.plot(ax=ax, column="zona", cmap=paleta_categorica(len(areas)), categorical=True, linewidth=0, alpha=0.9)
     pontos.plot(
         ax=ax,
         color=CORES["ponto"],

@@ -24,7 +24,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 - **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente, quantas vagas no RJ, o que cada cargo faz e mapa do eleitorado real por município
 - **Análise do Eleitorado**: duas páginas
   - **Perfil por Zona**: perfil do eleitorado por zona ou, dentro de 1 município, por bairro (gênero, faixa etária, escolaridade, raça/cor), com recorte opcional por município e mapa que dá zoom onde o perfil filtrado é mais forte
-  - **Curral Eleitoral**: votação real (não estimativa) de um candidato específico à eleição de 2024, por zona, dentro do município dele
+  - **Curral Eleitoral**: votação real (não estimativa) de um candidato específico, por zona. Cobre vereador e prefeito (2024, dentro do município do candidato) e governador, senador, deputado estadual e deputado federal (2022, no RJ inteiro)
 
 ## Stack
 
@@ -92,13 +92,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python src/baixar_dados_tse.py     # baixa os dados brutos do TSE (~2,3 GB)
 python src/tratar_perfil_secao.py  # gera o perfil do eleitorado por local de votação
-python src/tratar_resultados.py --ano 2024  # gera a votação por candidato (curral eleitoral)
+python src/tratar_resultados.py --ano 2024  # gera a votação por candidato (curral eleitoral, vereador/prefeito)
+python src/tratar_resultados.py --ano 2022  # o mesmo, governador/senador/deputados
 streamlit run app/app.py
 ```
 
 O download é o primeiro passo depois de clonar: os dados brutos **não são
 versionados**, então um clone novo vem sem eles. Detalhes na seção seguinte.
-Os dois `tratar_*` geram o que fica em `data/processed/`, também não
+Os `tratar_*` geram o que fica em `data/processed/`, também não
 versionado; sem eles, as páginas de Análise do Eleitorado mostram uma
 mensagem pedindo pra rodar o script certo, em vez de dar erro.
 
@@ -334,26 +335,40 @@ eleição suplementar de Três Rios de outubro/2025, por causa de uma
 decisão judicial específica daquele município) e grava
 `data/processed/votacao_<ano>.parquet`.
 
-A página **Análise do Eleitorado > Curral Eleitoral**: escolhe um
-município (vereador e prefeito só disputam dentro do próprio), um cargo,
-o turno (só relevante pra prefeito: em 2024 só Niterói e Petrópolis foram
-pro 2º turno no RJ) e um candidato. Mostra o total de votos dele, a
+A página **Análise do Eleitorado > Curral Eleitoral** escolhe primeiro um
+**cargo**, que decide o resto do fluxo:
+
+- **Vereador e prefeito** (2024) só disputam dentro do próprio município,
+  então o próximo passo é escolher um. Prefeito também tem turno (só
+  relevante pra ele: em 2024 só Niterói e Petrópolis foram pro 2º turno
+  no RJ).
+- **Governador, senador, deputado estadual e deputado federal** (2022) têm
+  o mesmo candidato nos 92 municípios do RJ, então município vira um
+  filtro opcional pra focar numa região (o padrão é o estado inteiro), não
+  um passo obrigatório. Deputado estadual e deputado federal passam de mil
+  candidatos cada um no RJ; por padrão a lista mostra só quem se elegeu,
+  com uma caixa pra revelar todo mundo.
+
+Depois de escolher o candidato, a página mostra o total de votos dele, a
 situação (eleito por quociente partidário, por média, não eleito etc.),
 quanto dos votos vêm das 3 zonas mais fortes (o indicador de "quão forte
 é o curral") e o mapa, reaproveitando a mesma geometria de zona da página
 de Perfil por Zona.
 
-**Cobertura de hoje**: só vereador e prefeito, eleição de 2024, com os
-dois turnos. Faltam governador, senador, deputados e presidente:
+**Cobertura de hoje**: vereador e prefeito (2024, com os dois turnos) e
+governador, senador, deputado estadual e deputado federal (2022, só 1º
+turno). Falta só **presidente**: não vem no arquivo do RJ porque o TSE
+publica o resultado dele só no arquivo nacional ("BR"), já que o
+candidato é o mesmo em todo o país, não teria sentido duplicar por UF.
 
-- **Presidente** não vem no arquivo do RJ porque o TSE publica o
-  resultado dele só no arquivo nacional ("BR"), já que o candidato é o
-  mesmo em todo o país, não teria sentido duplicar por UF.
-- O arquivo de **2022** (governador, senador, deputados) que conseguimos
-  só tem o 1º turno. O governador do RJ em 2022 foi decidido no 2º turno
-  (Castro x Freixo), então falta exatamente o turno que mais importa pra
-  essa eleição. Ainda não sabemos se é outro arquivo do TSE ou um
-  parâmetro diferente no mesmo; investigação em aberto.
+Sobre o 2022 só ter 1º turno: não é um dado faltando, é o resultado real.
+O governador Cláudio Castro (PL) se reelegeu já no 1º turno, em
+02/10/2022, com 58,67% dos votos válidos contra 27,38% de Marcelo Freixo
+(PSB), o primeiro governador reeleito no 1º turno desde Sérgio Cabral em
+2010 (fonte: [TSE](https://www.tse.jus.br/comunicacao/noticias/2022/Outubro/claudio-castro-pl-e-releito-governador-do-rj)).
+Senador e deputado (estadual e federal) no Brasil nunca têm 2º turno,
+então o arquivo de 2022 do RJ está completo do jeito que é: nenhum desses
+4 cargos teve um 2º turno pra faltar.
 
 Também não temos o nível de seção eleitoral (só município e zona), TSE
 publica isso num conjunto à parte ("Votação por seção eleitoral"), mais
@@ -439,6 +454,7 @@ continua necessária só para as fontes que seguem inacessíveis, como o OSM.
 - [ ] Renda por setor censitário (IBGE), para cruzar com o perfil do eleitorado
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [x] Curral eleitoral: votação real por candidato, município e zona (vereador e prefeito, 2024)
-- [ ] Curral eleitoral pra governador, senador, deputados e presidente (falta achar o arquivo certo do TSE, ver "Curral eleitoral" acima)
+- [x] Curral eleitoral pra governador, senador, deputado estadual e deputado federal (2022)
+- [ ] Curral eleitoral pra presidente (falta achar o arquivo nacional "BR" do TSE, ver "Curral eleitoral" acima)
 - [ ] Curral eleitoral no nível de seção/bairro, se um dia buscarmos "Votação por seção eleitoral" do TSE
 - [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

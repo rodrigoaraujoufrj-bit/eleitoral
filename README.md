@@ -64,10 +64,12 @@ eleitoral/
 │       ├── pleito_estadual_federal.py
 │       └── perfil_eleitorado.py
 ├── src/
-│   ├── restaurar_dados.py        # remonta e descomprime os brutos do TSE
+│   ├── baixar_dados_tse.py       # baixa os brutos do TSE (primeiro passo após clonar)
+│   ├── restaurar_dados.py        # legado, ver "Dados brutos do TSE"
 │   └── tratar_perfil_secao.py    # agrega o perfil do eleitorado por local de votação
 ├── data/
-│   ├── raw/        # brutos do TSE, versionados comprimidos (ver abaixo)
+│   ├── raw/        # brutos do TSE, NÃO versionados (ver abaixo)
+│   │   ├── resultados/           # votação por candidato/município/zona (RJ), 2022 e 2024
 │   │   ├── locais_votacao/       # eleitorado por local de votação (RJ)
 │   │   ├── perfil_secao/         # perfil do eleitorado por seção (RJ)
 │   │   └── perfil_deficiencia/   # eleitores com deficiência (RJ)
@@ -83,36 +85,66 @@ eleitoral/
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+python src/baixar_dados_tse.py   # baixa os dados brutos do TSE (~2,3 GB)
 streamlit run app/app.py
 ```
 
+O download é o primeiro passo depois de clonar: os dados brutos **não são
+versionados**, então um clone novo vem sem eles. Detalhes na seção seguinte.
+
 ## Dados brutos do TSE
 
-Três conjuntos de dados abertos do TSE, todos com recorte **RJ** e referentes à
-eleição de **04/10/2026**, estão versionados em `data/raw/`. Como os CSVs
-originais somam ~1,8 GB e o GitHub rejeita arquivos acima de 100 MiB, eles
-entram no repositório **comprimidos com gzip**; o maior deles é ainda dividido
-em partes de 90 MiB.
-
-Para gerar os `.csv` a partir do que está versionado:
+Os dados brutos do TSE **não são versionados**. Eles somam ~2,3 GB (um deles,
+sozinho, 1,7 GB), muito acima do limite de 100 MiB por arquivo do GitHub. Em
+vez de carregar os dados, o repositório carrega o **script que os baixa**:
 
 ```bash
-python src/restaurar_dados.py              # restaura o que estiver faltando
-python src/restaurar_dados.py --verificar  # só confere os sha256
+python src/baixar_dados_tse.py                 # baixa o que estiver faltando
+python src/baixar_dados_tse.py --listar        # só mostra o que falta
+python src/baixar_dados_tse.py --conjunto resultados_2024
+python src/baixar_dados_tse.py --forcar        # rebaixa mesmo se o CSV existir
 ```
 
-O script remonta as partes, descomprime e valida o SHA-256 de cada arquivo. Os
-`.csv` resultantes ficam fora do versionamento (`.gitignore`), então rodá-lo é o
-primeiro passo depois de clonar.
+É **idempotente**: um conjunto cujo CSV já está em `data/raw/` é pulado, então
+rodar de novo depois de uma interrupção só completa o que falta. Mostra
+progresso durante o download e apaga o `.zip` depois de extrair (use
+`--manter-zip` para guardá-lo).
 
-| Conjunto | Arquivo | Linhas | CSV | No repo |
-|---|---|---:|---:|---:|
-| `locais_votacao` | `eleitorado_local_votacao_2026_RJ.csv` | 38.739 | 15,2 MB | 2,9 MB |
-| `perfil_secao` | `perfil_eleitor_secao_2026_RJ.csv` | 6.943.094 | 1,66 GB | 202 MB (3 partes) |
-| `perfil_deficiencia` | `perfil_eleitor_deficiencia_2026_RJ.csv` | 155.199 | 36,2 MB | 2,6 MB |
+| Chave | Pasta | Arquivo extraído | Linhas | CSV | Zip baixado |
+|---|---|---|---:|---:|---:|
+| `resultados_2022` | `resultados` | `votacao_candidato_munzona_2022_RJ.csv` | — | 211 MB | 553 MB |
+| `resultados_2024` | `resultados` | `votacao_candidato_munzona_2024_RJ.csv` | — | 35,6 MB | 47 MB |
+| `locais_votacao_2026` | `locais_votacao` | `eleitorado_local_votacao_2026_RJ.csv` | 38.739 | 15,2 MB | 83,5 MB |
+| `perfil_secao_2026` | `perfil_secao` | `perfil_eleitor_secao_2026_RJ.csv` | 6.943.094 | 1,66 GB | 202 MB |
+| `perfil_deficiencia_2026` | `perfil_deficiencia` | `perfil_eleitor_deficiencia_2026_RJ.csv` | 155.199 | 36,2 MB | 88,3 MB |
 
-Cada pasta traz o `leiame.pdf` original do respectivo conjunto, são documentos
-**diferentes** entre si, um por conjunto.
+Quase todos os zips do TSE são **nacionais**: trazem um CSV por UF, mais um
+`BRASIL`, além do `leiame.pdf` do conjunto. O script extrai **só o CSV do RJ e
+o `leiame.pdf`**, descartando as outras UFs sem gravá-las em disco. A exceção é
+`perfil_eleitor_secao`, que o TSE já publica por UF. Cada pasta fica com o
+`leiame.pdf` do seu conjunto, são documentos **diferentes** entre si (em
+`resultados/`, onde caem dois anos, viram `leiame_2022.pdf` e
+`leiame_2024.pdf`).
+
+Uma pegadinha do CDN: no conjunto de eleitores com deficiência a **pasta** se
+chama `perfil_eleitor_deficiente` e o **arquivo**
+`perfil_eleitor_deficiencia_2026.zip`. Trocar um nome pelo outro dá 404.
+
+### Por que o download passa pelo PowerShell
+
+O CDN do TSE (`cdn.tse.jus.br`) fica atrás da Akamai, que barra clientes de
+linha de comando por **fingerprint TLS**: `curl`, `requests` e `urllib` levam
+403 Forbidden mesmo enviando cabeçalhos de navegador, porque o bloqueio não
+olha o User-Agent, e sim a assinatura do handshake TLS. O que passa, no
+Windows, é o **BITS** (`Start-BitsTransfer`), que baixa pela pilha WinHTTP do
+sistema; por isso o script delega o download ao PowerShell.
+
+Fora do Windows não há BITS. O script tenta `urllib` e, se a Akamai barrar,
+explica o caminho manual: baixar os zips pelo navegador e rodar
+`python src/baixar_dados_tse.py --zips-em <pasta>`, que extrai a partir deles
+sem baixar nada.
+
+### Lendo os CSVs
 
 **Ao ler os CSVs**: são `ISO-8859-1` (Latin-1), sem BOM, separador `;`, campos de
 texto entre aspas duplas. As coordenadas de `locais_votacao` usam **vírgula
@@ -137,10 +169,18 @@ número sozinho se repete em zonas diferentes do mesmo município (agrupar só
 por local dava 2.919, fundindo locais físicos distintos). É a camada de
 pontos que aparece no mapa do Pleito Municipal, opcional via checkbox.
 
-Origem: <https://dadosabertos.tse.jus.br/>. O CDN do TSE (`cdn.tse.jus.br`) fica
-atrás de Akamai e bloqueia clientes de linha de comando por fingerprint TLS,
-`curl` e `Invoke-WebRequest` levam 403 mesmo com cabeçalhos de navegador. O
-download funcionou via `Start-BitsTransfer` (WinHTTP).
+Origem: <https://dadosabertos.tse.jus.br/>, servida pelo CDN `cdn.tse.jus.br`
+(sobre o bloqueio dele, veja "Por que o download passa pelo PowerShell" acima).
+
+### Legado ainda no repositório
+
+Antes desta abordagem, os brutos entravam versionados comprimidos com gzip (o
+maior dividido em partes de 90 MiB), remontados por `src/restaurar_dados.py`.
+Esses `.gz` e `.gz.part*` **ainda estão rastreados** em `data/raw/`, ~211 MB:
+acrescentar `data/raw/` ao `.gitignore` não desrastreia o que já estava
+rastreado. Removê-los do rastreamento (`git rm --cached`), junto com
+`src/restaurar_dados.py`, é uma limpeza pendente — e ela encolhe o clone
+futuro, não o histórico, que continuaria carregando os blobs.
 
 ## Área de influência de cada zona eleitoral
 
@@ -308,7 +348,10 @@ correção estivessem exibindo o Rio de Janeiro corretamente.
 
 Sobre o mapa em si: a primeira versão usava Leaflet (via `folium`), mas a biblioteca e as camadas de mapa (tiles) vêm de CDNs externos (jsdelivr, CartoDB, OpenStreetMap), todos bloqueados nesta sessão. Trocado por um mapa estático com `geopandas`/`matplotlib`, que não depende de nada externo em tempo de execução, nem aqui nem para quem for rodar o app.
 
-Os locais de votação vieram assim: outra sessão do Claude Code, rodando localmente (sem essa restrição de rede), baixou os três conjuntos do TSE e subiu pro GitHub comprimidos, seguindo o padrão de "usar o GitHub como ponte" descrito acima.
+Os dados do TSE não têm mais esse problema: quem roda o projeto numa máquina com
+acesso de rede normal (Windows, por causa do BITS) baixa tudo com
+`python src/baixar_dados_tse.py`, sem depender do GitHub como ponte. A ponte
+continua necessária só para as fontes que seguem inacessíveis, como o OSM.
 
 ## Próximos passos
 
@@ -330,6 +373,8 @@ Os locais de votação vieram assim: outra sessão do Claude Code, rodando local
 - [x] Recorte espacial por município, e perfil do eleitorado por bairro dentro de 1 município
 - [x] Mapa para o Pleito Estadual e Federal (eleitorado real por município, já que esses cargos não têm vaga municipal)
 - [x] Quociente eleitoral aproximado (votos que garantem vaga de vereador) e densidade (eleitores por km²) na Análise do Eleitorado
+- [x] Script único para baixar os brutos do TSE (`src/baixar_dados_tse.py`), com os brutos fora do versionamento
+- [ ] Desrastrear os `.gz`/`.gz.part*` legados de `data/raw/` e remover `src/restaurar_dados.py`
 - [ ] Tratar `perfil_deficiencia` e gerar agregado em `data/processed/`
 - [ ] Pontos de interesse (transporte público, comércio) via OpenStreetMap, quando achar uma fonte acessível
 - [ ] Renda por setor censitário (IBGE), para cruzar com o perfil do eleitorado

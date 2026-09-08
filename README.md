@@ -348,10 +348,13 @@ turno, um candidato que foi pro 2º turno (Niterói e Petrópolis, prefeito,
 A página **Análise do Eleitorado > Curral Eleitoral** escolhe primeiro um
 **cargo**, que decide o resto do fluxo:
 
-- **Vereador e prefeito** (2024) só disputam dentro do próprio município,
-  então o próximo passo é escolher um. Prefeito também tem turno (só
-  relevante pra ele: em 2024 só Niterói e Petrópolis foram pro 2º turno
-  no RJ).
+- **Vereador e prefeito** (2024) só disputam dentro do próprio município.
+  Prefeito também tem turno (vereador nunca tem 2º turno, é sempre
+  proporcional em turno único), perguntado **antes** do município: o
+  dropdown de município já vem filtrado pra só quem de fato teve aquele
+  turno, em vez de deixar escolher qualquer um dos 92 e só descobrir
+  depois que não teve 2º turno. Em 2024 só Niterói e Petrópolis foram
+  pro 2º turno de prefeito no RJ.
 - **Governador, senador, deputado estadual e deputado federal** (2022) têm
   o mesmo candidato nos 92 municípios do RJ, então município vira um
   filtro opcional pra focar numa região (o padrão é o estado inteiro), não

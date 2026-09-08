@@ -18,6 +18,7 @@ from resultados_eleitorais import (
 from setores_censitarios import carregar_setores
 
 NOMES_MUNICIPIOS = sorted(m["municipio"] for m in MUNICIPIOS_RJ)
+CANONICO = {m["municipio"].upper(): m["municipio"] for m in MUNICIPIOS_RJ}
 
 # Cada cargo só existe num ano (o app não cruza pleito municipal com
 # estadual/federal) e só os municipais (vereador, prefeito) disputam
@@ -99,7 +100,29 @@ votacao = _votacao_cache(ano)
 
 st.subheader("Onde")
 if info_cargo["municipal"]:
-    municipio_escolhido = st.selectbox("Município", options=NOMES_MUNICIPIOS)
+    # Turno primeiro, não depois: só prefeito tem 2º turno, e só nalguns
+    # municípios (Niterói e Petrópolis em 2024). Perguntar o turno antes
+    # filtra o dropdown de município pra só quem de fato teve esse turno,
+    # em vez de deixar escolher qualquer um dos 92 e só descobrir depois
+    # que não tem 2º turno pra ele.
+    turnos_do_cargo = turnos_disponiveis(votacao, cargo_escolhido)
+    turno_escolhido = (
+        st.radio("Turno", options=turnos_do_cargo, horizontal=True, format_func=lambda t: f"{t}º turno")
+        if len(turnos_do_cargo) > 1
+        else turnos_do_cargo[0]
+    )
+    municipios_do_turno = sorted(
+        CANONICO.get(m, m)
+        for m in votacao.loc[
+            (votacao["cargo"] == cargo_escolhido) & (votacao["turno"] == turno_escolhido), "municipio"
+        ].unique()
+    )
+    if len(municipios_do_turno) < len(NOMES_MUNICIPIOS):
+        st.caption(
+            f"Só {len(municipios_do_turno)} município(s) foram pro {turno_escolhido}º turno de "
+            f"{cargo_escolhido.lower()} em {ano}: {', '.join(municipios_do_turno)}."
+        )
+    municipio_escolhido = st.selectbox("Município", options=municipios_do_turno)
     municipios_filtro = [municipio_escolhido.upper()]
 else:
     municipios_selecionados = st.multiselect(
@@ -111,15 +134,15 @@ else:
     )
     municipios_filtro = [m.upper() for m in municipios_selecionados]
 
-turnos = turnos_disponiveis(votacao, cargo_escolhido, municipios_filtro[0] if info_cargo["municipal"] else None)
-if not turnos:
-    st.warning(f"Sem dados de {cargo_escolhido.lower()} para esse recorte.")
-    st.stop()
-turno_escolhido = (
-    st.radio("Turno", options=turnos, horizontal=True, format_func=lambda t: f"{t}º turno")
-    if len(turnos) > 1
-    else turnos[0]
-)
+    turnos = turnos_disponiveis(votacao, cargo_escolhido)
+    if not turnos:
+        st.warning(f"Sem dados de {cargo_escolhido.lower()} para esse recorte.")
+        st.stop()
+    turno_escolhido = (
+        st.radio("Turno", options=turnos, horizontal=True, format_func=lambda t: f"{t}º turno")
+        if len(turnos) > 1
+        else turnos[0]
+    )
 
 recorte_ativo = bool(municipios_filtro) and not info_cargo["municipal"]
 

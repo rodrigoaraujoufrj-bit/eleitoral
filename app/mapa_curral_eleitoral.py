@@ -1,5 +1,5 @@
-"""Dois jeitos de mapa específicos do Curral Eleitoral, além do coroplético
-contínuo de `mapa_perfil_eleitorado.py`:
+"""Três jeitos de mapa específicos do Curral Eleitoral, além do coroplético
+contínuo por zona de `mapa_perfil_eleitorado.py`:
 
 - **Dominância**: qual candidato foi o mais votado em cada zona, cor
   categórica (uma por candidato, os menos frequentes agrupados em
@@ -7,14 +7,19 @@ contínuo de `mapa_perfil_eleitorado.py`:
 - **Comparação**: a vantagem, em pontos percentuais, de um candidato
   sobre outro em cada zona, cor divergente (âmbar de um lado, roxo do
   outro, neutro no meio).
+- **Mapa de calor**: densidade de voto suavizada (KDE), não presa aos
+  limites de zona como as outras duas.
 """
 
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from scipy.stats import gaussian_kde
+from shapely import contains_xy
 
 from areas_influencia import paleta_categorica
-from mapa_municipal import CORES_DIVERGENTE, carregar_geodataframe
+from mapa_municipal import CORES_CALOR, CORES_DIVERGENTE, carregar_geodataframe
 from mapa_perfil_eleitorado import CRS_PROJETADA
 
 COR_OUTROS = "#B7AFC2"  # cinza neutro, fora da paleta categórica (só roxo/magenta/âmbar)
@@ -65,6 +70,87 @@ def montar_mapa_dominancia(
 
     if municipios_geometria is not None:
         _aplicar_zoom(ax, municipios.total_bounds)
+    ax.set_axis_off()
+    fig.tight_layout()
+    return fig
+
+
+def montar_mapa_calor(
+    pontos: pd.DataFrame,
+    municipios_geometria: gpd.GeoDataFrame | None = None,
+    resolucao: int = 220,
+):
+    """Densidade de voto suavizada (KDE), a partir de pontos com peso.
+
+    `pontos`: colunas `lat`, `lon` (WGS84) e `votos_estimados` (ver
+    `votos_por_local`, em resultados_eleitorais.py). Diferente do
+    coroplético por zona, não fica preso aos limites de zona: mostra onde
+    o voto se concentra de fato dentro de cada uma, suavizado. A grade é
+    recortada pelo contorno dos municípios (fora dele fica transparente,
+    sem inventar voto em área sem gente).
+    """
+    municipios = municipios_geometria if municipios_geometria is not None else carregar_geodataframe().to_crs(CRS_PROJETADA)
+    area = municipios.union_all()
+
+    pontos_proj = gpd.GeoDataFrame(
+        pontos, geometry=gpd.points_from_xy(pontos["lon"], pontos["lat"]), crs="EPSG:4326"
+    ).to_crs(CRS_PROJETADA)
+    xs = pontos_proj.geometry.x.to_numpy()
+    ys = pontos_proj.geometry.y.to_numpy()
+    pesos = pontos_proj["votos_estimados"].to_numpy()
+
+    fig, ax = plt.subplots(figsize=(7, 8))
+    municipios.plot(ax=ax, facecolor="#F1ECF6", edgecolor="#C9A6D9", linewidth=0.5)
+
+    if pesos.sum() <= 0 or len(xs) < 2:
+        ax.set_axis_off()
+        fig.tight_layout()
+        return fig
+
+    kde = gaussian_kde(np.vstack([xs, ys]), weights=pesos)
+
+    xmin, ymin, xmax, ymax = area.bounds
+    margem_x, margem_y = (xmax - xmin) * 0.05, (ymax - ymin) * 0.05
+    xmin, xmax, ymin, ymax = xmin - margem_x, xmax + margem_x, ymin - margem_y, ymax + margem_y
+
+    grade_x, grade_y = np.mgrid[xmin : xmax : complex(resolucao), ymin : ymax : complex(resolucao)]
+    grade_z = kde(np.vstack([grade_x.ravel(), grade_y.ravel()])).reshape(grade_x.shape)
+    dentro = contains_xy(area, grade_x, grade_y)
+    grade_z = np.where(dentro, grade_z, np.nan)
+
+    valores_validos = grade_z[~np.isnan(grade_z)]
+    if valores_validos.size:
+        vmin, vmax = float(valores_validos.min()), float(valores_validos.max())
+        # Opacidade cresce com a densidade (raiz quadrada pra subir rápido no
+        # começo): onde tem pouco voto fica quase transparente, deixando o
+        # contorno de fundo aparecer, e só "acende" nas concentrações reais.
+        # Um imshow com opacidade fixa aqui ficava ilegível: a cor mais clara
+        # da paleta (extremo "menos voto") é quase idêntica ao fundo do mapa,
+        # então sem isso a maior parte do estado não mostrava nada.
+        normalizado = np.clip((grade_z - vmin) / (vmax - vmin), 0, 1)
+        opacidade = np.where(np.isnan(grade_z), 0, normalizado**0.5)
+
+        # zorder explícito: imshow nasce com zorder mais baixo que o
+        # preenchimento dos municípios (um Patch), sem isso o calor fica
+        # escondido atrás dele, apesar de ser desenhado depois.
+        ax.imshow(
+            grade_z.T,
+            extent=(xmin, xmax, ymin, ymax),
+            origin="lower",
+            cmap=CORES_CALOR,
+            norm=plt.Normalize(vmin=vmin, vmax=vmax),
+            alpha=opacidade.T,
+            interpolation="bilinear",
+            zorder=2,
+        )
+        sm = plt.cm.ScalarMappable(cmap=CORES_CALOR, norm=plt.Normalize(vmin=vmin, vmax=vmax))
+        cbar = fig.colorbar(sm, ax=ax, shrink=0.6)
+        cbar.set_label("Concentração de voto")
+        cbar.set_ticks([vmin, vmax])
+        cbar.set_ticklabels(["Menor", "Maior"])
+
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
     ax.set_axis_off()
     fig.tight_layout()
     return fig

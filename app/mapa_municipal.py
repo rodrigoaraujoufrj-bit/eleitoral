@@ -15,6 +15,13 @@ CORES_MAPA = LinearSegmentedColormap.from_list("eleitoral", ["#F1ECF6", "#C9A6D9
 # vermelho/verde/azul saturado.
 CORES_DIVERGENTE = LinearSegmentedColormap.from_list("eleitoral_divergente", ["#C9922E", "#F1ECF6", "#8A5FA8"])
 
+# Mapa de calor: transparente/lilás claro (frio, pouco voto) até âmbar
+# (quente, muito voto), passando pelo roxo do meio da paleta principal.
+# Um "heatmap" tradicional usa amarelo/vermelho; aqui fica só na família
+# roxo/âmbar do app, pelo mesmo motivo de sempre (nenhuma associação
+# partidária).
+CORES_CALOR = LinearSegmentedColormap.from_list("eleitoral_calor", ["#F1ECF6", "#C9A6D9", "#8A5FA8", "#C9922E"])
+
 
 def carregar_geodataframe() -> gpd.GeoDataFrame:
     return gpd.read_file(GEOJSON_PATH)

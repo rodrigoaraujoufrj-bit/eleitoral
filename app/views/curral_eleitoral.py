@@ -1,7 +1,7 @@
 import streamlit as st
 
 from locais_votacao import carregar_locais_votacao, locais_votacao_disponivel
-from mapa_curral_eleitoral import montar_mapa_comparacao, montar_mapa_dominancia
+from mapa_curral_eleitoral import montar_mapa_calor, montar_mapa_comparacao, montar_mapa_dominancia
 from mapa_municipal import carregar_geodataframe
 from mapa_perfil_eleitorado import CRS_PROJETADA, carregar_zonas_geometria, montar_mapa_perfil
 from municipios_rj import MUNICIPIOS_RJ
@@ -12,6 +12,7 @@ from resultados_eleitorais import (
     dominancia_por_zona,
     resultados_disponivel,
     turnos_disponiveis,
+    votos_por_local,
     votos_por_zona,
 )
 from setores_censitarios import carregar_setores
@@ -150,7 +151,7 @@ if visualizacao == "Um candidato":
     sq_escolhido = _selectbox_candidato(lista_candidatos, f"Candidato a {cargo_escolhido.lower()}")
 
     st.subheader("Onde estão os votos dele(a)")
-    por_zona = votos_por_zona(votacao, sq_escolhido, municipios=municipios_filtro or None)
+    por_zona = votos_por_zona(votacao, sq_escolhido, turno_escolhido, municipios=municipios_filtro or None)
     por_zona["area_km2"] = por_zona["zona"].map(area_km2_por_zona)
     por_zona["densidade"] = por_zona["votos"] / por_zona["area_km2"]
     total_votos = int(por_zona["votos"].sum())
@@ -171,14 +172,20 @@ if visualizacao == "Um candidato":
 
     metrica = st.radio(
         "Colorir o mapa por",
-        options=["Votos absolutos", "Densidade (votos por km²)"],
+        options=["Votos absolutos", "Densidade (votos por km²)", "Mapa de calor"],
         horizontal=True,
-        help="Densidade evita que uma zona rural grande pareça 'mais forte' só por ter mais área; "
-        "mostra votos por km², não votos totais.",
+        help="Densidade evita que uma zona rural grande pareça 'mais forte' só por ter mais área "
+        "(mostra votos por km², não voto total). Mapa de calor é uma densidade suavizada, sem "
+        "ficar presa ao limite de cada zona: espalha o voto dela pelos locais de votação, "
+        "proporcional ao eleitorado de cada um (o TSE não publica voto por local, então é mais "
+        "uma aproximação, só pra esse mapa).",
     )
-    coluna_metrica, legenda_mapa = (
-        ("votos", "Votos") if metrica == "Votos absolutos" else ("densidade", "Votos por km²")
-    )
+    if metrica == "Mapa de calor":
+        coluna_metrica, legenda_mapa = "votos", "Votos"
+    else:
+        coluna_metrica, legenda_mapa = (
+            ("votos", "Votos") if metrica == "Votos absolutos" else ("densidade", "Votos por km²")
+        )
 
     quantidade_alvo = _slider_quantidade("Quantas zonas destacar", len(por_zona), teto_padrao=15, valor_padrao=5)
     zonas_alvo = por_zona.sort_values(coluna_metrica, ascending=False).head(quantidade_alvo)["zona"].tolist()
@@ -197,15 +204,19 @@ if visualizacao == "Um candidato":
         tabela[["Zona", "Votos", "% do total do candidato", "Votos por km²"]], hide_index=True, use_container_width=True
     )
 
-    valores_por_zona = por_zona.set_index("zona")[coluna_metrica]
-    fig = montar_mapa_perfil(
-        zona_geometria,
-        valores_por_zona,
-        legenda_mapa,
-        zonas_alvo=zonas_alvo,
-        municipios_geometria=municipio_geometria,
-        coluna_unidade="zona",
-    )
+    if metrica == "Mapa de calor":
+        pontos = votos_por_local(votacao, sq_escolhido, turno_escolhido, locais, municipios=municipios_filtro or None)
+        fig = montar_mapa_calor(pontos, municipios_geometria=municipio_geometria)
+    else:
+        valores_por_zona = por_zona.set_index("zona")[coluna_metrica]
+        fig = montar_mapa_perfil(
+            zona_geometria,
+            valores_por_zona,
+            legenda_mapa,
+            zonas_alvo=zonas_alvo,
+            municipios_geometria=municipio_geometria,
+            coluna_unidade="zona",
+        )
     st.pyplot(fig, use_container_width=True)
 
 elif visualizacao == "Quem venceu em cada zona":
@@ -245,7 +256,7 @@ else:
     with coluna_b:
         sq_b = _selectbox_candidato(lista_candidatos, "Candidato(a) B", excluir_sq=sq_a)
 
-    comparacao = comparar_candidatos_por_zona(votacao, sq_a, sq_b, municipios=municipios_filtro or None)
+    comparacao = comparar_candidatos_por_zona(votacao, sq_a, sq_b, turno_escolhido, municipios=municipios_filtro or None)
     nome_a = lista_candidatos.loc[lista_candidatos["sq_candidato"] == sq_a, "candidato"].iloc[0]
     nome_b = lista_candidatos.loc[lista_candidatos["sq_candidato"] == sq_b, "candidato"].iloc[0]
 

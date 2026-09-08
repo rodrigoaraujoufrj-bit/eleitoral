@@ -30,6 +30,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 
 - **Python** para tratamento de dados (pandas, geopandas)
 - **geopandas** / **matplotlib** para os mapas coropléticos (estáticos, sem depender de internet em tempo de execução) e **plotly** para outros gráficos
+- **scipy** (`gaussian_kde`) só pro mapa de calor do Curral Eleitoral (densidade de voto suavizada)
 - **Streamlit** para o webapp/dashboard, com navegação em seções (`st.navigation`) separando os dois pleitos
 
 ## Identidade visual
@@ -336,6 +337,14 @@ eleição suplementar de Três Rios de outubro/2025, por causa de uma
 decisão judicial específica daquele município) e grava
 `data/processed/votacao_<ano>.parquet`.
 
+Pegadinha do `SQ_CANDIDATO`: é o mesmo número pra um candidato no 1º e no
+2º turno (é a mesma candidatura, só continua pro 2º turno). Toda função
+de `app/resultados_eleitorais.py` que soma voto por `sq_candidato` recebe
+`turno` como parâmetro obrigatório por causa disso: sem filtrar por
+turno, um candidato que foi pro 2º turno (Niterói e Petrópolis, prefeito,
+2024) aparece com o voto dos dois turnos somado, que não quer dizer nada
+(são disputas diferentes, com concorrentes diferentes).
+
 A página **Análise do Eleitorado > Curral Eleitoral** escolhe primeiro um
 **cargo**, que decide o resto do fluxo:
 
@@ -357,10 +366,17 @@ mesma geometria de zona da página de Perfil por Zona:
 - **Um candidato**: o fluxo original. Mostra o total de votos dele, a
   situação (eleito por quociente partidário, por média, não eleito etc.) e
   quanto vem das 3 zonas mais fortes (o indicador de "quão forte é o
-  curral"). O mapa colore por votos absolutos ou por **densidade** (votos
-  por km², opção nova): densidade evita que uma zona rural grande pareça
-  "mais forte" só por ter mais área, é votos por km² mesmo, não voto
-  total.
+  curral"). O mapa tem 3 jeitos de colorir:
+  - **Votos absolutos**: coroplético simples, por zona.
+  - **Densidade (votos por km²)**: evita que uma zona rural grande
+    pareça "mais forte" só por ter mais área.
+  - **Mapa de calor**: densidade suavizada (KDE, `scipy.stats.gaussian_kde`),
+    sem ficar presa ao limite de cada zona. O TSE não publica voto por
+    local de votação, só por zona (ver "Curral eleitoral" acima), então
+    esse mapa é uma aproximação a mais: espalha o voto de cada zona
+    pelos locais dela, proporcional ao eleitorado de cada um, não ao
+    voto real de cada local (que não existe nesse nível). Os outros
+    dois mapas usam só dado real, sem essa camada extra de aproximação.
 - **Quem venceu em cada zona**: mapa de dominância, cor categórica em vez
   de gradiente. Olha todo mundo que concorreu (não só quem passou num
   filtro), e mostra o candidato mais votado em cada zona. Como um cargo
@@ -475,7 +491,7 @@ continua necessária só para as fontes que seguem inacessíveis, como o OSM.
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [x] Curral eleitoral: votação real por candidato, município e zona (vereador e prefeito, 2024)
 - [x] Curral eleitoral pra governador, senador, deputado estadual e deputado federal (2022)
-- [x] 3 jeitos de visualizar o curral eleitoral no mapa: 1 candidato (votos ou densidade), dominância por zona e comparação entre 2 candidatos
+- [x] 3 jeitos de visualizar o curral eleitoral no mapa: 1 candidato (votos, densidade ou mapa de calor), dominância por zona e comparação entre 2 candidatos
 - [ ] Curral eleitoral pra presidente (falta achar o arquivo nacional "BR" do TSE, ver "Curral eleitoral" acima)
 - [ ] Curral eleitoral no nível de seção/bairro, se um dia buscarmos "Votação por seção eleitoral" do TSE
 - [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

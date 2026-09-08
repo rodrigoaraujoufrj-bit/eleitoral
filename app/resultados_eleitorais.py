@@ -67,21 +67,54 @@ def candidatos(
     return agrupado
 
 
-def votos_por_zona(votacao: pd.DataFrame, sq_candidato: str, municipios: list[str] | None = None) -> pd.DataFrame:
+def votos_por_zona(votacao: pd.DataFrame, sq_candidato: str, turno: str, municipios: list[str] | None = None) -> pd.DataFrame:
     """Votos de um candidato específico, por zona, com o percentual do total dele em cada uma.
 
-    `municipios` restringe tanto a votação somada quanto o total usado no
-    percentual ao recorte escolhido (mesma lógica de `eleitores_por_zona`
-    em `perfil_eleitorado.py`): com um recorte ativo, os números passam a
-    valer só dentro dele, não do estado inteiro.
+    `turno` é obrigatório: `sq_candidato` não muda entre turnos (é a mesma
+    candidatura), então sem esse filtro um candidato que foi pro 2º turno
+    (Niterói e Petrópolis, prefeito, 2024) apareceria com o voto dos dois
+    turnos somado, dado sem sentido (são disputas diferentes, com
+    concorrentes diferentes). `municipios` restringe tanto a votação
+    somada quanto o total usado no percentual ao recorte escolhido (mesma
+    lógica de `eleitores_por_zona` em `perfil_eleitorado.py`): com um
+    recorte ativo, os números passam a valer só dentro dele, não do
+    estado inteiro.
     """
-    do_candidato = votacao[votacao["sq_candidato"] == sq_candidato]
+    do_candidato = votacao[(votacao["sq_candidato"] == sq_candidato) & (votacao["turno"] == turno)]
     if municipios:
         do_candidato = do_candidato[do_candidato["municipio"].isin(municipios)]
     por_zona = do_candidato.groupby("zona", as_index=False)["votos"].sum()
     total = por_zona["votos"].sum()
     por_zona["percentual"] = (por_zona["votos"] / total * 100) if total else 0
     return por_zona.sort_values("votos", ascending=False)
+
+
+def votos_por_local(
+    votacao: pd.DataFrame,
+    sq_candidato: str,
+    turno: str,
+    locais_votacao: pd.DataFrame,
+    municipios: list[str] | None = None,
+) -> pd.DataFrame:
+    """Votos de um candidato específico, espalhados por local de votação (lat/lon).
+
+    O TSE não publica voto por local, só por município e zona (ver README).
+    Aqui, o voto de cada zona é distribuído entre os locais dela
+    proporcional ao eleitorado de cada um, não ao voto real (que a gente
+    não tem nesse nível): é uma aproximação, útil só pra alimentar o mapa
+    de calor (`montar_mapa_calor`, em mapa_curral_eleitoral.py), que
+    precisa de pontos, não de polígono de zona. Não confundir com dado
+    real de local de votação.
+    """
+    por_zona = votos_por_zona(votacao, sq_candidato, turno, municipios)[["zona", "votos"]]
+    locais = locais_votacao
+    if municipios:
+        locais = locais[locais["municipio"].isin(municipios)]
+    locais = locais.merge(por_zona, on="zona", how="inner")
+    eleitores_por_zona = locais["zona"].map(locais.groupby("zona")["eleitores"].sum())
+    fracao = (locais["eleitores"] / eleitores_por_zona).where(eleitores_por_zona > 0, 0)
+    locais["votos_estimados"] = locais["votos"] * fracao
+    return locais[["lat", "lon", "votos_estimados"]]
 
 
 def dominancia_por_zona(
@@ -110,12 +143,12 @@ def dominancia_por_zona(
 
 
 def comparar_candidatos_por_zona(
-    votacao: pd.DataFrame, sq_candidato_a: str, sq_candidato_b: str, municipios: list[str] | None = None
+    votacao: pd.DataFrame, sq_candidato_a: str, sq_candidato_b: str, turno: str, municipios: list[str] | None = None
 ) -> pd.DataFrame:
     """Votos dos dois candidatos em cada zona, lado a lado, com a vantagem
     de A sobre B em pontos percentuais (negativa quando B vence ali)."""
-    votos_a = votos_por_zona(votacao, sq_candidato_a, municipios).set_index("zona")["votos"]
-    votos_b = votos_por_zona(votacao, sq_candidato_b, municipios).set_index("zona")["votos"]
+    votos_a = votos_por_zona(votacao, sq_candidato_a, turno, municipios).set_index("zona")["votos"]
+    votos_b = votos_por_zona(votacao, sq_candidato_b, turno, municipios).set_index("zona")["votos"]
     combinado = pd.concat([votos_a.rename("votos_a"), votos_b.rename("votos_b")], axis=1).fillna(0).reset_index()
     total = combinado["votos_a"] + combinado["votos_b"]
     combinado["vantagem_pct"] = ((combinado["votos_a"] - combinado["votos_b"]) / total.where(total > 0) * 100).fillna(0)

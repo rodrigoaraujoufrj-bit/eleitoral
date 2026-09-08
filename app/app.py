@@ -20,6 +20,7 @@ pagina = st.navigation(
         ],
         "Análise do Eleitorado": [
             st.Page("views/perfil_eleitorado.py", title="Perfil por Zona", url_path="perfil-eleitorado"),
+            st.Page("views/curral_eleitoral.py", title="Curral Eleitoral", url_path="curral-eleitoral"),
         ],
     }
 )

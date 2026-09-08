@@ -5,7 +5,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 ## Escopo
 
 - **Recorte geográfico**: estado do Rio de Janeiro e seus 92 municípios (sem outros estados)
-- **Sem dados históricos**: o foco é o pleito atual/próximo de cada cargo, não série histórica de eleições passadas
+- **Pouco dado histórico, e só quando ele responde algo que o pleito atual sozinho não responde**: o foco principal é o pleito atual/próximo de cada cargo, não série histórica de eleições passadas. A exceção é a votação real da eleição anterior de cada cargo (ver "Curral eleitoral" abaixo), usada só pra mostrar onde um candidato teve força de verdade, algo que nenhum dado do pleito atual consegue mostrar
 - **Dois pleitos**, porque no Brasil eles acontecem em anos diferentes:
   - **Pleito Municipal**: vereador e prefeito
   - **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente (eleição geral de 2026)
@@ -22,7 +22,9 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 - **Home**: apresentação do projeto
 - **Pleito Municipal**: vereador e prefeito, quantas vagas no RJ, o que cada cargo faz, mapa por município e área de influência de cada zona eleitoral
 - **Pleito Estadual e Federal**: deputado estadual, deputado federal, senador, governador e presidente, quantas vagas no RJ, o que cada cargo faz e mapa do eleitorado real por município
-- **Análise do Eleitorado**: perfil do eleitorado por zona ou, dentro de 1 município, por bairro (gênero, faixa etária, escolaridade, raça/cor), com recorte opcional por município e mapa que dá zoom onde o perfil filtrado é mais forte
+- **Análise do Eleitorado**: duas páginas
+  - **Perfil por Zona**: perfil do eleitorado por zona ou, dentro de 1 município, por bairro (gênero, faixa etária, escolaridade, raça/cor), com recorte opcional por município e mapa que dá zoom onde o perfil filtrado é mais forte
+  - **Curral Eleitoral**: votação real (não estimativa) de um candidato específico à eleição de 2024, por zona, dentro do município dele
 
 ## Stack
 
@@ -54,6 +56,7 @@ eleitoral/
 │   ├── perfil_eleitorado.py      # perfil do eleitorado por zona, com filtros combináveis
 │   ├── perfil_eleitorado_bairro.py # o mesmo, por bairro, dentro de 1 município
 │   ├── mapa_perfil_eleitorado.py # mapa coroplético por zona ou bairro, com zoom no filtrado
+│   ├── resultados_eleitorais.py  # votação real por candidato (curral eleitoral)
 │   ├── diagrama_poderes.py       # diagrama Executivo x Legislativo e órgãos subordinados
 │   ├── geo/
 │   │   ├── rj_municipios.geojson          # contorno dos 92 municípios (fonte: GitHub, tbrugz/geodata-br)
@@ -62,18 +65,20 @@ eleitoral/
 │       ├── home.py
 │       ├── pleito_municipal.py
 │       ├── pleito_estadual_federal.py
-│       └── perfil_eleitorado.py
+│       ├── perfil_eleitorado.py
+│       └── curral_eleitoral.py
 ├── src/
 │   ├── baixar_dados_tse.py       # baixa os brutos do TSE (primeiro passo após clonar)
 │   ├── restaurar_dados.py        # legado, ver "Dados brutos do TSE"
-│   └── tratar_perfil_secao.py    # agrega o perfil do eleitorado por local de votação
+│   ├── tratar_perfil_secao.py    # agrega o perfil do eleitorado por local de votação
+│   └── tratar_resultados.py      # trata a votação por candidato/município/zona
 ├── data/
 │   ├── raw/        # brutos do TSE, NÃO versionados (ver abaixo)
 │   │   ├── resultados/           # votação por candidato/município/zona (RJ), 2022 e 2024
 │   │   ├── locais_votacao/       # eleitorado por local de votação (RJ)
 │   │   ├── perfil_secao/         # perfil do eleitorado por seção (RJ)
 │   │   └── perfil_deficiencia/   # eleitores com deficiência (RJ)
-│   └── processed/  # dados já tratados (não versionados), ver `perfil_eleitorado_local.parquet`
+│   └── processed/  # dados já tratados (não versionados), ver `perfil_eleitorado_local.parquet` e `votacao_<ano>.parquet`
 ├── notebooks/      # exploração e prototipagem
 ├── requirements.txt
 └── README.md
@@ -85,12 +90,17 @@ eleitoral/
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python src/baixar_dados_tse.py   # baixa os dados brutos do TSE (~2,3 GB)
+python src/baixar_dados_tse.py     # baixa os dados brutos do TSE (~2,3 GB)
+python src/tratar_perfil_secao.py  # gera o perfil do eleitorado por local de votação
+python src/tratar_resultados.py --ano 2024  # gera a votação por candidato (curral eleitoral)
 streamlit run app/app.py
 ```
 
 O download é o primeiro passo depois de clonar: os dados brutos **não são
 versionados**, então um clone novo vem sem eles. Detalhes na seção seguinte.
+Os dois `tratar_*` geram o que fica em `data/processed/`, também não
+versionado; sem eles, as páginas de Análise do Eleitorado mostram uma
+mensagem pedindo pra rodar o script certo, em vez de dar erro.
 
 ## Dados brutos do TSE
 
@@ -112,8 +122,8 @@ progresso durante o download e apaga o `.zip` depois de extrair (use
 
 | Chave | Pasta | Arquivo extraído | Linhas | CSV | Zip baixado |
 |---|---|---|---:|---:|---:|
-| `resultados_2022` | `resultados` | `votacao_candidato_munzona_2022_RJ.csv` | — | 211 MB | 553 MB |
-| `resultados_2024` | `resultados` | `votacao_candidato_munzona_2024_RJ.csv` | — | 35,6 MB | 47 MB |
+| `resultados_2022` | `resultados` | `votacao_candidato_munzona_2022_RJ.csv` | 476.349 | 211 MB | 553 MB |
+| `resultados_2024` | `resultados` | `votacao_candidato_munzona_2024_RJ.csv` | 80.711 | 35,6 MB | 47 MB |
 | `locais_votacao_2026` | `locais_votacao` | `eleitorado_local_votacao_2026_RJ.csv` | 38.739 | 15,2 MB | 83,5 MB |
 | `perfil_secao_2026` | `perfil_secao` | `perfil_eleitor_secao_2026_RJ.csv` | 6.943.094 | 1,66 GB | 202 MB |
 | `perfil_deficiencia_2026` | `perfil_deficiencia` | `perfil_eleitor_deficiencia_2026_RJ.csv` | 155.199 | 36,2 MB | 88,3 MB |
@@ -179,7 +189,7 @@ maior dividido em partes de 90 MiB), remontados por `src/restaurar_dados.py`.
 Esses `.gz` e `.gz.part*` **ainda estão rastreados** em `data/raw/`, ~211 MB:
 acrescentar `data/raw/` ao `.gitignore` não desrastreia o que já estava
 rastreado. Removê-los do rastreamento (`git rm --cached`), junto com
-`src/restaurar_dados.py`, é uma limpeza pendente — e ela encolhe o clone
+`src/restaurar_dados.py`, é uma limpeza pendente. Ela encolhe o clone
 futuro, não o histórico, que continuaria carregando os blobs.
 
 ## Área de influência de cada zona eleitoral
@@ -291,15 +301,64 @@ votos um vereador precisa": divide o eleitorado do município (real, de
 Art. 29 IV da Constituição), o quociente eleitoral aproximado. É referência
 de teto (quem tira essa votação garante vaga sozinho), não piso: o sistema
 proporcional também depende do desempenho do partido/coligação, então boa
-parte dos vereadores eleitos historicamente vota menos que isso, só que
-sem dado de eleição passada (fora do escopo deste projeto) não dá pra
-estimar esse número menor.
+parte dos vereadores eleitos tem votação abaixo disso (ver quantos, de
+verdade, na página **Curral Eleitoral**, com a votação real de 2024).
 
 Uma terceira métrica, junto com total e concentração, é **densidade**
 (eleitores do filtro por km², área da própria zona ou bairro): uma
 referência geográfica de onde uma campanha de porta em porta rende mais
 gente por área percorrida, não um dado real de custo de campanha (que
 este projeto não tem e não fabrica).
+
+## Curral eleitoral
+
+Diferente de tudo até aqui, isto é resultado real de eleição passada, não
+composição demográfica nem aproximação nenhuma: onde um candidato
+específico teve força de verdade. É a exceção ao "pouco dado histórico"
+do escopo, porque nenhum outro dado do projeto responde essa pergunta.
+
+Fonte: TSE, conjunto "Votação nominal por candidato, por município e
+zona" (`votacao_candidato_munzona`), baixado por `src/baixar_dados_tse.py`
+e tratado por `src/tratar_resultados.py`:
+
+```bash
+python src/tratar_resultados.py --ano 2024
+python src/tratar_resultados.py --ano 2022
+```
+
+Cada linha do CSV bruto já é um candidato numa zona (RJ inteiro em 2024
+são só ~80 mil linhas, não precisa processar em pedaços como
+`perfil_secao`). O tratamento filtra fora eleições que não são a
+principal do ano (o arquivo de 2024, por exemplo, trazia junto uma
+eleição suplementar de Três Rios de outubro/2025, por causa de uma
+decisão judicial específica daquele município) e grava
+`data/processed/votacao_<ano>.parquet`.
+
+A página **Análise do Eleitorado > Curral Eleitoral**: escolhe um
+município (vereador e prefeito só disputam dentro do próprio), um cargo,
+o turno (só relevante pra prefeito: em 2024 só Niterói e Petrópolis foram
+pro 2º turno no RJ) e um candidato. Mostra o total de votos dele, a
+situação (eleito por quociente partidário, por média, não eleito etc.),
+quanto dos votos vêm das 3 zonas mais fortes (o indicador de "quão forte
+é o curral") e o mapa, reaproveitando a mesma geometria de zona da página
+de Perfil por Zona.
+
+**Cobertura de hoje**: só vereador e prefeito, eleição de 2024, com os
+dois turnos. Faltam governador, senador, deputados e presidente:
+
+- **Presidente** não vem no arquivo do RJ porque o TSE publica o
+  resultado dele só no arquivo nacional ("BR"), já que o candidato é o
+  mesmo em todo o país, não teria sentido duplicar por UF.
+- O arquivo de **2022** (governador, senador, deputados) que conseguimos
+  só tem o 1º turno. O governador do RJ em 2022 foi decidido no 2º turno
+  (Castro x Freixo), então falta exatamente o turno que mais importa pra
+  essa eleição. Ainda não sabemos se é outro arquivo do TSE ou um
+  parâmetro diferente no mesmo; investigação em aberto.
+
+Também não temos o nível de seção eleitoral (só município e zona), TSE
+publica isso num conjunto à parte ("Votação por seção eleitoral"), mais
+pesado; se um dia for atrás, dá pra descer a granularidade do curral
+eleitoral no mesmo nível de bairro que já existe no Perfil por Zona.
 
 ## Pontos de interesse (transporte, comércio) via OpenStreetMap
 
@@ -379,4 +438,7 @@ continua necessária só para as fontes que seguem inacessíveis, como o OSM.
 - [ ] Pontos de interesse (transporte público, comércio) via OpenStreetMap, quando achar uma fonte acessível
 - [ ] Renda por setor censitário (IBGE), para cruzar com o perfil do eleitorado
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
+- [x] Curral eleitoral: votação real por candidato, município e zona (vereador e prefeito, 2024)
+- [ ] Curral eleitoral pra governador, senador, deputados e presidente (falta achar o arquivo certo do TSE, ver "Curral eleitoral" acima)
+- [ ] Curral eleitoral no nível de seção/bairro, se um dia buscarmos "Votação por seção eleitoral" do TSE
 - [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

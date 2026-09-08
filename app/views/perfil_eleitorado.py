@@ -161,9 +161,14 @@ coluna_metrica = {
 
 teto = min(30, len(resultado))
 piso = min(3, teto)
-quantidade_alvo = st.slider(
-    f"Quantos(as) {rotulo_unidade.lower()}s destacar", min_value=piso, max_value=teto, value=min(10, teto)
-)
+if teto > piso:
+    quantidade_alvo = st.slider(
+        f"Quantos(as) {rotulo_unidade.lower()}s destacar", min_value=piso, max_value=teto, value=min(10, teto)
+    )
+else:
+    # Poucas unidades no total (um município pequeno pode ter só 1 ou 2
+    # bairros na nossa geometria): nada pra escolher, mostra todas.
+    quantidade_alvo = teto
 
 ordenado = resultado.sort_values(coluna_metrica, ascending=False)
 unidades_alvo = ordenado.head(quantidade_alvo)["unidade"].tolist()

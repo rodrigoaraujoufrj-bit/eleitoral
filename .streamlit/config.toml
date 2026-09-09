@@ -1,3 +1,11 @@
+[client]
+# Repositório e app são públicos: sem isso, um erro não tratado mostra o
+# traceback completo (caminho de arquivo no servidor, nomes de função
+# internos) pra qualquer visitante. Com "none", quem visita só vê uma
+# mensagem genérica; o traceback completo continua no log do Streamlit
+# Cloud, só que lá só quem administra o app enxerga.
+showErrorDetails = "none"
+
 [theme]
 base = "light"
 primaryColor = "#C9922E"

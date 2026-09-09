@@ -421,7 +421,11 @@ mesma geometria de zona da página de Perfil por Zona:
     fica "sem padrão significativo", o que é o esperado (nem toda zona é
     um extremo estatístico). Só aparece como opção com pelo menos 8
     zonas no recorte (município pequeno não tem amostra espacial
-    suficiente pra fazer sentido). Os outros 3 mapas usam só dado real
+    suficiente pra fazer sentido): sempre disponível pra governador,
+    senador e deputados (165 zonas, RJ inteiro), mas em vereador e
+    prefeito só o município do Rio de Janeiro (49 zonas) passa desse
+    mínimo, dos 92 do estado; nos outros 91 a página mostra uma
+    explicação em vez do controle, pra não parecer bug. Os outros 3 mapas usam só dado real
     (ou uma aproximação geométrica simples, no caso do mapa de calor);
     o hotspot é o único com uma camada de estatística inferencial.
 - **Quem venceu em cada zona**: mapa de dominância, cor categórica em vez

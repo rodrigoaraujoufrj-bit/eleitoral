@@ -1,6 +1,6 @@
 import streamlit as st
 
-from hotspot import calcular_hotspot, hotspot_disponivel
+from hotspot import ZONAS_MINIMAS, calcular_hotspot, hotspot_disponivel
 from locais_votacao import carregar_locais_votacao, locais_votacao_disponivel
 from mapa_curral_eleitoral import (
     montar_mapa_calor,
@@ -203,6 +203,14 @@ if visualizacao == "Um candidato":
     opcoes_metrica = ["Votos absolutos", "Densidade (votos por km²)", "Mapa de calor"]
     if hotspot_disponivel(zona_geometria):
         opcoes_metrica.append("Hotspot (Getis-Ord Gi*)")
+    else:
+        st.caption(
+            f"O hotspot (Getis-Ord Gi*) não aparece aqui de propósito: esse recorte só tem "
+            f"{len(zona_geometria)} zona(s), menos que o mínimo de {ZONAS_MINIMAS} que a análise "
+            "espacial precisa pra não virar ruído estatístico. Aparece pro RJ inteiro (governador, "
+            "senador, deputados) e, entre vereador/prefeito, só pro Rio de Janeiro (49 zonas), o "
+            "único município com zonas suficientes."
+        )
     metrica = st.radio(
         "Colorir o mapa por",
         options=opcoes_metrica,

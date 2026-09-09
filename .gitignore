@@ -20,6 +20,23 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# Exceção: esses 4 arquivos são pequenos (~24 MB no total) e o app lê
+# direto deles em tempo de execução (locais de votação e os dois anos de
+# curral eleitoral), diferente do resto de data/raw/ (usado só pelos
+# scripts de tratamento, offline, ou grande demais pra versionar, como o
+# perfil_secao de 1,7 GB). Sem eles, o deploy no Streamlit Community
+# Cloud não teria de onde ler: lá não dá pra rodar
+# `python src/baixar_dados_tse.py` (não tem BITS, e o CDN do TSE bloqueia
+# esse tipo de acesso, ver "Por que o download passa pelo PowerShell" no
+# README). São dados agregados, não microdado individual (esse continua
+# de fora, é o motivo do repositório ser privado).
+!data/raw/locais_votacao/
+data/raw/locais_votacao/*
+!data/raw/locais_votacao/eleitorado_local_votacao_2026_RJ.csv
+!data/processed/perfil_eleitorado_local.parquet
+!data/processed/votacao_2022.parquet
+!data/processed/votacao_2024.parquet
+
 # Editores
 .vscode/
 .idea/

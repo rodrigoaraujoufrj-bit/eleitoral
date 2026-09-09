@@ -101,10 +101,33 @@ streamlit run app/app.py
 ```
 
 O download é o primeiro passo depois de clonar: os dados brutos **não são
-versionados**, então um clone novo vem sem eles. Detalhes na seção seguinte.
-Os `tratar_*` geram o que fica em `data/processed/`, também não
-versionado; sem eles, as páginas de Análise do Eleitorado mostram uma
+versionados**, então um clone novo vem sem eles (com uma exceção pequena,
+ver "Deploy" logo abaixo). Detalhes na seção seguinte. Os `tratar_*`
+geram o que fica em `data/processed/`, também não versionado (mesma
+exceção); sem eles, as páginas de Análise do Eleitorado mostram uma
 mensagem pedindo pra rodar o script certo, em vez de dar erro.
+
+## Deploy
+
+O app está pronto pra publicar no [Streamlit Community
+Cloud](https://share.streamlit.io) (gratuito, gera um link tipo
+`nome-do-app.streamlit.app`):
+
+1. Em share.streamlit.io, entre com a conta GitHub e autorize o acesso a
+   este repositório (ele é privado, então precisa desse passo extra).
+2. "New app" → escolha `rodrigoaraujoufrj-bit/eleitoral`, branch `main`,
+   arquivo principal `app/app.py`.
+3. Deploy. A primeira build demora alguns minutos (geopandas e as
+   bibliotecas de análise espacial não são leves).
+
+Diferente do resto de `data/raw/` e `data/processed/` (não versionados,
+ver acima), 4 arquivos pequenos (~24 MB no total: locais de votação e os
+2 anos de curral eleitoral já tratados) **são versionados de propósito**,
+exceção explícita no `.gitignore`. Sem eles, o deploy não teria de onde
+ler: lá não dá pra rodar `python src/baixar_dados_tse.py` (sem BITS, e o
+CDN do TSE bloqueia esse tipo de acesso de qualquer forma, ver "Por que o
+download passa pelo PowerShell" abaixo). São dados agregados, não
+microdado individual (esse continua de fora do repositório).
 
 ## Dados brutos do TSE
 

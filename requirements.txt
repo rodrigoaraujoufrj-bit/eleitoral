@@ -5,3 +5,5 @@ matplotlib
 plotly
 pyarrow
 scipy
+libpysal
+esda

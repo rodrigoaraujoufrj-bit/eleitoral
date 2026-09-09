@@ -89,6 +89,41 @@ def votos_por_zona(votacao: pd.DataFrame, sq_candidato: str, turno: str, municip
     return por_zona.sort_values("votos", ascending=False)
 
 
+def participacao_por_zona(
+    votacao: pd.DataFrame,
+    sq_candidato: str,
+    cargo: str,
+    turno: str,
+    municipios: list[str] | None = None,
+) -> pd.DataFrame:
+    """Percentual do candidato sobre o total de votos válidos de cada zona
+    (todos os candidatos daquele cargo/turno ali), não sobre o total dele
+    mesmo (que é o que `votos_por_zona` já dá). Isola força política
+    relativa: uma zona com muito eleitorado tem muito voto pra todo mundo,
+    então "quem vota mais nele, comparado ao resto de quem vota lá" é uma
+    pergunta diferente de "onde ele tem mais voto em número absoluto".
+    Serve de base pro hotspot (`hotspot.py`), que precisa de um valor que
+    não seja só reflexo de densidade populacional.
+
+    Zonas sem nenhum voto do candidato entram com 0%, não ficam de fora:
+    "não votaram nele" é dado, não ausência de dado.
+    """
+    do_candidato = votos_por_zona(votacao, sq_candidato, turno, municipios)[["zona", "votos"]].rename(
+        columns={"votos": "votos_candidato"}
+    )
+    filtro = votacao[(votacao["cargo"] == cargo) & (votacao["turno"] == turno)]
+    if municipios:
+        filtro = filtro[filtro["municipio"].isin(municipios)]
+    total_zona = filtro.groupby("zona", as_index=False)["votos"].sum().rename(columns={"votos": "votos_totais_zona"})
+
+    combinado = total_zona.merge(do_candidato, on="zona", how="left")
+    combinado["votos_candidato"] = combinado["votos_candidato"].fillna(0)
+    combinado["percentual_local"] = (combinado["votos_candidato"] / combinado["votos_totais_zona"] * 100).where(
+        combinado["votos_totais_zona"] > 0, 0
+    )
+    return combinado
+
+
 def votos_por_local(
     votacao: pd.DataFrame,
     sq_candidato: str,

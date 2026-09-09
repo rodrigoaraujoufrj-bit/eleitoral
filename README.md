@@ -31,6 +31,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 - **Python** para tratamento de dados (pandas, geopandas)
 - **geopandas** / **matplotlib** para os mapas coropléticos (estáticos, sem depender de internet em tempo de execução) e **plotly** para outros gráficos
 - **scipy** (`gaussian_kde`) só pro mapa de calor do Curral Eleitoral (densidade de voto suavizada)
+- **libpysal** / **esda** (PySAL) só pro hotspot do Curral Eleitoral (Getis-Ord Gi*, ponto quente/frio estatisticamente significativo)
 - **Streamlit** para o webapp/dashboard, com navegação em seções (`st.navigation`) separando os dois pleitos
 
 ## Identidade visual
@@ -369,7 +370,7 @@ mesma geometria de zona da página de Perfil por Zona:
 - **Um candidato**: o fluxo original. Mostra o total de votos dele, a
   situação (eleito por quociente partidário, por média, não eleito etc.) e
   quanto vem das 3 zonas mais fortes (o indicador de "quão forte é o
-  curral"). O mapa tem 3 jeitos de colorir:
+  curral"). O mapa tem 4 jeitos de colorir:
   - **Votos absolutos**: coroplético simples, por zona.
   - **Densidade (votos por km²)**: evita que uma zona rural grande
     pareça "mais forte" só por ter mais área.
@@ -378,8 +379,28 @@ mesma geometria de zona da página de Perfil por Zona:
     local de votação, só por zona (ver "Curral eleitoral" acima), então
     esse mapa é uma aproximação a mais: espalha o voto de cada zona
     pelos locais dela, proporcional ao eleitorado de cada um, não ao
-    voto real de cada local (que não existe nesse nível). Os outros
-    dois mapas usam só dado real, sem essa camada extra de aproximação.
+    voto real de cada local (que não existe nesse nível).
+  - **Hotspot** (`app/hotspot.py`): Getis-Ord Gi*, um teste estatístico de
+    análise espacial (via `libpysal`/`esda`, a biblioteca de referência
+    em Python pra isso, não uma conta caseira), diferente dos outros 3.
+    A pergunta muda: em vez de "onde ele tem mais voto ou mais gente",
+    pergunta "onde ele é desproporcionalmente forte (ou fraco) comparado
+    às zonas vizinhas, mais do que dá pra explicar por acaso". Usa como
+    entrada o percentual do candidato sobre o total de votos válidos de
+    cada zona (não o voto absoluto dele, que mistura força política com
+    tamanho do eleitorado), e a vizinhança de cada zona são as 6 mais
+    próximas do centroide (k-vizinhos, não fronteira compartilhada: as
+    zonas do RJ, em especial dentro do município do Rio, ficam
+    espalhadas e intercaladas pelo território, ver "Área de influência
+    de cada zona eleitoral" abaixo, então adjacência por fronteira
+    deixaria zonas sem vizinho de verdade). Resultado em 7 categorias,
+    de "ponto frio (99%)" a "ponto quente (99%)"; a maioria das zonas
+    fica "sem padrão significativo", o que é o esperado (nem toda zona é
+    um extremo estatístico). Só aparece como opção com pelo menos 8
+    zonas no recorte (município pequeno não tem amostra espacial
+    suficiente pra fazer sentido). Os outros 3 mapas usam só dado real
+    (ou uma aproximação geométrica simples, no caso do mapa de calor);
+    o hotspot é o único com uma camada de estatística inferencial.
 - **Quem venceu em cada zona**: mapa de dominância, cor categórica em vez
   de gradiente. Olha todo mundo que concorreu (não só quem passou num
   filtro), e mostra o candidato mais votado em cada zona. Como um cargo
@@ -494,7 +515,7 @@ continua necessária só para as fontes que seguem inacessíveis, como o OSM.
 - [ ] Salário efetivo de prefeito e vereador por município (além do teto/exemplo)
 - [x] Curral eleitoral: votação real por candidato, município e zona (vereador e prefeito, 2024)
 - [x] Curral eleitoral pra governador, senador, deputado estadual e deputado federal (2022)
-- [x] 3 jeitos de visualizar o curral eleitoral no mapa: 1 candidato (votos, densidade ou mapa de calor), dominância por zona e comparação entre 2 candidatos
+- [x] 3 jeitos de visualizar o curral eleitoral no mapa: 1 candidato (votos, densidade, mapa de calor ou hotspot), dominância por zona e comparação entre 2 candidatos
 - [ ] Curral eleitoral pra presidente (falta achar o arquivo nacional "BR" do TSE, ver "Curral eleitoral" acima)
 - [ ] Curral eleitoral no nível de seção/bairro, se um dia buscarmos "Votação por seção eleitoral" do TSE
 - [ ] Cruzar com dados eleitorais de fato (candidatos, votação) quando o pleito de 2026 tiver dados

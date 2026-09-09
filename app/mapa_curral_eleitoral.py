@@ -1,5 +1,5 @@
-"""Três jeitos de mapa específicos do Curral Eleitoral, além do coroplético
-contínuo por zona de `mapa_perfil_eleitorado.py`:
+"""Quatro jeitos de mapa específicos do Curral Eleitoral, além do
+coroplético contínuo por zona de `mapa_perfil_eleitorado.py`:
 
 - **Dominância**: qual candidato foi o mais votado em cada zona, cor
   categórica (uma por candidato, os menos frequentes agrupados em
@@ -9,6 +9,8 @@ contínuo por zona de `mapa_perfil_eleitorado.py`:
   outro, neutro no meio).
 - **Mapa de calor**: densidade de voto suavizada (KDE), não presa aos
   limites de zona como as outras duas.
+- **Hotspot**: ponto quente/frio estatisticamente significativo
+  (Getis-Ord Gi*, ver `hotspot.py`), 7 categorias fixas.
 """
 
 import geopandas as gpd
@@ -19,11 +21,23 @@ from scipy.stats import gaussian_kde
 from shapely import contains_xy
 
 from areas_influencia import paleta_categorica
+from hotspot import CATEGORIAS_EM_ORDEM
 from mapa_municipal import CORES_CALOR, CORES_DIVERGENTE, carregar_geodataframe
 from mapa_perfil_eleitorado import CRS_PROJETADA
 
 COR_OUTROS = "#B7AFC2"  # cinza neutro, fora da paleta categórica (só roxo/magenta/âmbar)
 COR_SEM_DADO = "#E4DEEA"
+
+# Cores fixas e em ordem pro hotspot (Getis-Ord Gi*): âmbar pro "quente"
+# (candidato mais forte ali do que se esperaria por acaso) e roxo pro "frio"
+# (mais fraco do que o esperado), mesma convenção de cor da comparação entre
+# 2 candidatos (CORES_DIVERGENTE). Reaproveita os tons já usados no resto do
+# app (extremos de CORES_MAPA e o âmbar da identidade visual), não inventa
+# cor nova. Zipado com CATEGORIAS_EM_ORDEM (de hotspot.py) pra não duplicar
+# os nomes das 7 categorias em dois lugares.
+CORES_HOTSPOT = dict(
+    zip(CATEGORIAS_EM_ORDEM, ["#8C5A12", "#C9922E", "#E0B876", "#E4DEEA", "#C9A6D9", "#8A5FA8", "#2C2140"])
+)
 
 
 def _fundo_municipios(municipios_geometria: gpd.GeoDataFrame | None):
@@ -67,6 +81,35 @@ def montar_mapa_dominancia(
             continue
         subset.plot(ax=ax, color=cor, linewidth=0.3, edgecolor="#FAF8FB", label=categoria)
     ax.legend(loc="lower left", fontsize=7, frameon=True, title="Mais votado(a) na zona")
+
+    if municipios_geometria is not None:
+        _aplicar_zoom(ax, municipios.total_bounds)
+    ax.set_axis_off()
+    fig.tight_layout()
+    return fig
+
+
+def montar_mapa_hotspot(
+    zonas_geometria: gpd.GeoDataFrame,
+    hotspot_por_zona: pd.DataFrame,
+    municipios_geometria: gpd.GeoDataFrame | None = None,
+    coluna_unidade: str = "zona",
+):
+    """`hotspot_por_zona`: saída de `hotspot.calcular_hotspot`, colunas
+    `zona` (ou `coluna_unidade`) e `classificacao` (uma das 7 categorias
+    fixas de `hotspot.CATEGORIAS_EM_ORDEM`)."""
+    zonas = zonas_geometria.merge(
+        hotspot_por_zona[[coluna_unidade, "classificacao"]], on=coluna_unidade, how="left"
+    )
+    zonas["classificacao"] = zonas["classificacao"].fillna("Sem padrão significativo")
+
+    fig, ax, municipios = _fundo_municipios(municipios_geometria)
+    for categoria, cor in CORES_HOTSPOT.items():
+        subset = zonas[zonas["classificacao"] == categoria]
+        if subset.empty:
+            continue
+        subset.plot(ax=ax, color=cor, linewidth=0.3, edgecolor="#FAF8FB", label=categoria)
+    ax.legend(loc="lower left", fontsize=6.5, frameon=True, title="Hotspot (Getis-Ord Gi*)")
 
     if municipios_geometria is not None:
         _aplicar_zoom(ax, municipios.total_bounds)

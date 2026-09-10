@@ -19,8 +19,11 @@ CORES_DIVERGENTE = LinearSegmentedColormap.from_list("eleitoral_divergente", ["#
 # (quente, muito voto), passando pelo roxo do meio da paleta principal.
 # Um "heatmap" tradicional usa amarelo/vermelho; aqui fica só na família
 # roxo/âmbar do app, pelo mesmo motivo de sempre (nenhuma associação
-# partidária).
-CORES_CALOR = LinearSegmentedColormap.from_list("eleitoral_calor", ["#F1ECF6", "#C9A6D9", "#8A5FA8", "#C9922E"])
+# partidária). Lista de hex (não LinearSegmentedColormap): o mapa de calor
+# interativo do Curral Eleitoral é Plotly, não matplotlib, e usa esses
+# mesmos tons na escala de cor dele (ver montar_mapa_calor_interativo, em
+# mapa_curral_eleitoral.py).
+CORES_CALOR_HEX = ["#F1ECF6", "#C9A6D9", "#8A5FA8", "#C9922E"]
 
 
 def carregar_geodataframe() -> gpd.GeoDataFrame:

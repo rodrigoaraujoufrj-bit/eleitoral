@@ -29,8 +29,7 @@ Projeto de análise geoespacial e dashboard interativo sobre a política eletiva
 ## Stack
 
 - **Python** para tratamento de dados (pandas, geopandas)
-- **geopandas** / **matplotlib** para os mapas coropléticos (estáticos, sem depender de internet em tempo de execução) e **plotly** para outros gráficos
-- **scipy** (`gaussian_kde`) só pro mapa de calor do Curral Eleitoral (densidade de voto suavizada)
+- **geopandas** / **matplotlib** para os mapas coropléticos (estáticos, sem depender de internet em tempo de execução), **plotly** para o mapa de calor interativo do Curral Eleitoral (com mapa de fundo CARTO, esse sim dependente de internet) e para outros gráficos
 - **libpysal** / **esda** (PySAL) só pro hotspot do Curral Eleitoral (Getis-Ord Gi*, ponto quente/frio estatisticamente significativo)
 - **Streamlit** para o webapp/dashboard, com navegação em seções (`st.navigation`) separando os dois pleitos
 
@@ -397,12 +396,16 @@ mesma geometria de zona da página de Perfil por Zona:
   - **Votos absolutos**: coroplético simples, por zona.
   - **Densidade (votos por km²)**: evita que uma zona rural grande
     pareça "mais forte" só por ter mais área.
-  - **Mapa de calor**: densidade suavizada (KDE, `scipy.stats.gaussian_kde`),
-    sem ficar presa ao limite de cada zona. O TSE não publica voto por
-    local de votação, só por zona (ver "Curral eleitoral" acima), então
-    esse mapa é uma aproximação a mais: espalha o voto de cada zona
-    pelos locais dela, proporcional ao eleitorado de cada um, não ao
-    voto real de cada local (que não existe nesse nível).
+  - **Mapa de calor**: densidade suavizada, num mapa interativo de
+    verdade (Plotly, `go.Densitymap`, com mapa de fundo CARTO
+    `carto-positron`), sem ficar presa ao limite de cada zona e com nome
+    de bairro e rua visível, diferente dos outros 3 (coropléticos
+    matplotlib, sem referência espacial nenhuma além do contorno do
+    município). O TSE não publica voto por local de votação, só por zona
+    (ver "Curral eleitoral" acima), então esse mapa é uma aproximação a
+    mais: espalha o voto de cada zona pelos locais dela, proporcional ao
+    eleitorado de cada um, não ao voto real de cada local (que não
+    existe nesse nível).
   - **Hotspot** (`app/hotspot.py`): Getis-Ord Gi*, um teste estatístico de
     análise espacial (via `libpysal`/`esda`, a biblioteca de referência
     em Python pra isso, não uma conta caseira), diferente dos outros 3.
@@ -508,6 +511,8 @@ do estado inteiro. Não é possível garantir que os mapas mostrados antes dessa
 correção estivessem exibindo o Rio de Janeiro corretamente.
 
 Sobre o mapa em si: a primeira versão usava Leaflet (via `folium`), mas a biblioteca e as camadas de mapa (tiles) vêm de CDNs externos (jsdelivr, CartoDB, OpenStreetMap), todos bloqueados nesta sessão. Trocado por um mapa estático com `geopandas`/`matplotlib`, que não depende de nada externo em tempo de execução, nem aqui nem para quem for rodar o app.
+
+Exceção depois do app publicado: o app em produção (Streamlit Community Cloud) tem acesso normal à internet, diferente deste ambiente de desenvolvimento. O mapa de calor do Curral Eleitoral voltou a ser interativo (Plotly, `go.Densitymap`, mapa de fundo CARTO `carto-positron`), porque esse mapa em especial perde o sentido sem referência espacial: uma mancha de densidade sozinha, sem nome de bairro ou rua ao fundo, não localiza nada. Os outros 3 mapas do Curral Eleitoral (dominância, comparação, hotspot) e todos os coropléticos do resto do app continuam estáticos, porque não têm essa mesma necessidade. O carregamento dos tiles do CARTO não dá pra confirmar visualmente neste ambiente (mesmo bloqueio de sempre); só no app publicado.
 
 Os dados do TSE não têm mais esse problema: quem roda o projeto numa máquina com
 acesso de rede normal (Windows, por causa do BITS) baixa tudo com

@@ -137,7 +137,7 @@ def votos_por_local(
     Aqui, o voto de cada zona é distribuído entre os locais dela
     proporcional ao eleitorado de cada um, não ao voto real (que a gente
     não tem nesse nível): é uma aproximação, útil só pra alimentar o mapa
-    de calor (`montar_mapa_calor`, em mapa_curral_eleitoral.py), que
+    de calor (`montar_mapa_calor_interativo`, em mapa_curral_eleitoral.py), que
     precisa de pontos, não de polígono de zona. Não confundir com dado
     real de local de votação.
     """

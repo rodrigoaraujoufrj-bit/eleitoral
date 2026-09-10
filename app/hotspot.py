@@ -2,7 +2,7 @@
 zona, pra achar onde um candidato é desproporcionalmente forte (ou fraco)
 comparado às zonas vizinhas, não só onde tem mais voto em número absoluto.
 
-Diferente do mapa de calor (`mapa_curral_eleitoral.montar_mapa_calor`, uma
+Diferente do mapa de calor (`mapa_curral_eleitoral.montar_mapa_calor_interativo`, uma
 densidade bruta suavizada), a pergunta aqui é outra: dado o valor de cada
 zona, ela forma um aglomerado com as vizinhas que é estatisticamente
 diferente do que se esperaria por acaso, ou é só ruído? Usa

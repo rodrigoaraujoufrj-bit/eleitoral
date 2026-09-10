@@ -3,7 +3,7 @@ import streamlit as st
 from hotspot import ZONAS_MINIMAS, calcular_hotspot, hotspot_disponivel
 from locais_votacao import carregar_locais_votacao, locais_votacao_disponivel
 from mapa_curral_eleitoral import (
-    montar_mapa_calor,
+    montar_mapa_calor_interativo,
     montar_mapa_comparacao,
     montar_mapa_dominancia,
     montar_mapa_hotspot,
@@ -216,10 +216,11 @@ if visualizacao == "Um candidato":
         options=opcoes_metrica,
         horizontal=True,
         help="Densidade evita que uma zona rural grande pareça 'mais forte' só por ter mais área "
-        "(mostra votos por km², não voto total). Mapa de calor é uma densidade suavizada, sem "
-        "ficar presa ao limite de cada zona: espalha o voto dela pelos locais de votação, "
-        "proporcional ao eleitorado de cada um (o TSE não publica voto por local, então é mais "
-        "uma aproximação, só pra esse mapa). Hotspot é diferente dos outros 3: um teste "
+        "(mostra votos por km², não voto total). Mapa de calor é interativo, com bairro/rua "
+        "visível no fundo: mostra a densidade de voto suavizada, sem ficar presa ao limite de "
+        "cada zona, espalhando o voto dela pelos locais de votação, proporcional ao eleitorado "
+        "de cada um (o TSE não publica voto por local, então é mais uma aproximação, só pra "
+        "esse mapa). Hotspot é diferente dos outros 3: um teste "
         "estatístico (Getis-Ord Gi*) que aponta onde o candidato é desproporcionalmente forte ou "
         "fraco comparado às zonas vizinhas, não só onde ele tem mais voto ou mais gente votando "
         "(some quando o recorte tem poucas zonas demais pra fazer sentido).",
@@ -250,7 +251,7 @@ if visualizacao == "Um candidato":
 
     if metrica == "Mapa de calor":
         pontos = votos_por_local(votacao, sq_escolhido, turno_escolhido, locais, municipios=municipios_filtro or None)
-        fig = montar_mapa_calor(pontos, municipios_geometria=municipio_geometria)
+        st.plotly_chart(montar_mapa_calor_interativo(pontos), use_container_width=True)
     elif metrica == "Hotspot (Getis-Ord Gi*)":
         participacao = participacao_por_zona(
             votacao, sq_escolhido, cargo_escolhido, turno_escolhido, municipios=municipios_filtro or None
@@ -277,6 +278,7 @@ if visualizacao == "Um candidato":
             tabela_hotspot["Z-score"] = tabela_hotspot["Z-score"].round(2)
             st.dataframe(tabela_hotspot, hide_index=True, use_container_width=True)
         fig = montar_mapa_hotspot(zona_geometria, hotspot_resultado, municipios_geometria=municipio_geometria, coluna_unidade="zona")
+        st.pyplot(fig, use_container_width=True)
     else:
         valores_por_zona = por_zona.set_index("zona")[coluna_metrica]
         fig = montar_mapa_perfil(
@@ -287,7 +289,7 @@ if visualizacao == "Um candidato":
             municipios_geometria=municipio_geometria,
             coluna_unidade="zona",
         )
-    st.pyplot(fig, use_container_width=True)
+        st.pyplot(fig, use_container_width=True)
 
 elif visualizacao == "Quem venceu em cada zona":
     st.subheader("Quem foi o(a) mais votado(a) em cada zona")

@@ -14,6 +14,8 @@ coroplético contínuo por zona de `mapa_perfil_eleitorado.py`:
   (Getis-Ord Gi*, ver `hotspot.py`), 7 categorias fixas.
 """
 
+import math
+
 import geopandas as gpd
 import pandas as pd
 import plotly.graph_objects as go
@@ -117,6 +119,20 @@ def montar_mapa_hotspot(
     return fig
 
 
+# `radius` do Densitymap é em pixel de tela, não em metro: um valor fixo
+# fica bom demais num recorte (1 município, poucas dezenas de locais de
+# votação espalhados) e ruim demais no outro (RJ inteiro, milhares de
+# locais, quase colados uns nos outros na tela). Por isso o raio é
+# calculado a partir de uma distância real fixa no chão (calibrada pela
+# banda que o KDE antigo, em matplotlib, calculava sozinho pra esses
+# mesmos dados: a versão nova busca o mesmo nível de suavização, só que
+# com mapa de fundo): bbox estreito (1 município) vira raio grande em
+# pixel, bbox largo (RJ inteiro) vira raio pequeno, sempre a mesma
+# distância no mundo real.
+_BANDA_ALVO_METROS = 1300
+_LARGURA_RENDER_PX = 1200  # largura aproximada do gráfico no app; não dá pra saber o valor exato do lado do Python, sem JS reativo ao tamanho do container
+
+
 def montar_mapa_calor_interativo(pontos: pd.DataFrame):
     """Densidade de voto suavizada, num mapa interativo de verdade (Plotly),
     com bairro/rua visível no fundo (CARTO).
@@ -134,23 +150,30 @@ def montar_mapa_calor_interativo(pontos: pd.DataFrame):
         fig.update_layout(map_style="carto-positron")
         return fig
 
+    lon_min, lon_max = pontos["lon"].min(), pontos["lon"].max()
+    lat_min, lat_max = pontos["lat"].min(), pontos["lat"].max()
+    margem_lon = max((lon_max - lon_min) * 0.1, 0.015)
+    margem_lat = max((lat_max - lat_min) * 0.1, 0.015)
+
+    largura_graus = (lon_max + margem_lon) - (lon_min - margem_lon)
+    lat_media = (lat_min + lat_max) / 2
+    largura_metros = max(largura_graus * 111_320 * math.cos(math.radians(lat_media)), 1)
+    raio = _BANDA_ALVO_METROS * _LARGURA_RENDER_PX / largura_metros
+    raio = min(max(raio, 10), 90)
+
     escala = [[i / (len(CORES_CALOR_HEX) - 1), cor] for i, cor in enumerate(CORES_CALOR_HEX)]
     fig.add_trace(
         go.Densitymap(
             lat=pontos["lat"],
             lon=pontos["lon"],
             z=pontos["votos_estimados"],
-            radius=18,
+            radius=raio,
             colorscale=escala,
             colorbar=dict(title=dict(text="Concentração<br>de voto"), tickvals=[]),
             hoverinfo="skip",
         )
     )
 
-    lon_min, lon_max = pontos["lon"].min(), pontos["lon"].max()
-    lat_min, lat_max = pontos["lat"].min(), pontos["lat"].max()
-    margem_lon = max((lon_max - lon_min) * 0.1, 0.015)
-    margem_lat = max((lat_max - lat_min) * 0.1, 0.015)
     fig.update_layout(
         map=dict(
             style="carto-positron",
